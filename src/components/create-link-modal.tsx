@@ -29,6 +29,9 @@ import { Share2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { TagsInput } from "@/components/ui/tags-input";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { getUserPlan, getRemainingLinks } from "@/lib/utils/plans";
+import { type PlanTier } from "@/lib/plans";
 
 type UtmTemplate = {
   id: string;
@@ -66,11 +69,23 @@ export const CreateLinkModal = ({
   const [availableTags, setAvailableTags] = React.useState<{ id: string; name: string }[]>([]);
   const [longUrl, setLongUrl] = React.useState("");
   const [urlError, setUrlError] = React.useState<string | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
+  const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
+  const [linkLimit, setLinkLimit] = React.useState<{
+    remaining: number | null;
+    used: number;
+    limit: number | null;
+  } | null>(null);
 
-  // Fetch available tags when modal opens
+  // Fetch available tags and plan info when modal opens
   React.useEffect(() => {
     if (open) {
       getAllTags(workspaceId).then(setAvailableTags).catch(() => setAvailableTags([]));
+      // Fetch plan info
+      getUserPlan().then(setCurrentPlan).catch(() => setCurrentPlan("free"));
+      getRemainingLinks(workspaceId)
+        .then(setLinkLimit)
+        .catch(() => setLinkLimit(null));
     }
   }, [open, workspaceId]);
 
@@ -175,7 +190,20 @@ export const CreateLinkModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <UpgradeModal
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        currentPlan={currentPlan}
+        reason={
+          linkLimit?.limit && linkLimit.remaining === 0
+            ? `You've reached your monthly limit of ${linkLimit.limit} links. Upgrade to create more.`
+            : undefined
+        }
+        limit={linkLimit?.limit || undefined}
+        currentCount={linkLimit?.used}
+      />
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>Create New Link</Button>
       </DialogTrigger>
@@ -255,10 +283,17 @@ export const CreateLinkModal = ({
               } catch (error) {
                 const errorMessage =
                   error instanceof Error ? error.message : "Failed to create link";
-                toast.error(errorMessage);
-                // If it's a URL validation error, show it in the UI
-                if (errorMessage.includes("URL") || errorMessage.includes("Invalid")) {
-                  setUrlError(errorMessage);
+                
+                // Check if it's a plan limit error
+                if (errorMessage.includes("limit") || errorMessage.includes("Plan limit")) {
+                  setUpgradeOpen(true);
+                  toast.error(errorMessage);
+                } else {
+                  toast.error(errorMessage);
+                  // If it's a URL validation error, show it in the UI
+                  if (errorMessage.includes("URL") || errorMessage.includes("Invalid")) {
+                    setUrlError(errorMessage);
+                  }
                 }
               } finally {
                 setIsSubmitting(false);
@@ -517,5 +552,6 @@ export const CreateLinkModal = ({
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 };

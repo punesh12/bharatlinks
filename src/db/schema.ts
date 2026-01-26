@@ -3,6 +3,12 @@ import { integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk User ID
   email: text("email").notNull(),
+  planTier: text("plan_tier")
+    .$type<"free" | "starter" | "pro" | "organization">()
+    .default("free")
+    .notNull(),
+  planStartDate: timestamp("plan_start_date"),
+  planEndDate: timestamp("plan_end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

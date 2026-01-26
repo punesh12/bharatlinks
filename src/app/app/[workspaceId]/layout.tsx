@@ -6,6 +6,9 @@ import { getWorkspaces } from "@/lib/actions/workspaces";
 import { UserButton } from "@clerk/nextjs";
 import { Link as LinkIcon, Menu } from "lucide-react";
 import Link from "next/link";
+import { PlanBadge } from "@/components/plan-badge";
+import { PlanUsage } from "@/components/plan-usage";
+import { getUserPlan } from "@/lib/utils/plans";
 
 const DashboardLayout = async ({
   children,
@@ -16,25 +19,38 @@ const DashboardLayout = async ({
 }) => {
   const { workspaceId } = await params;
   const workspaces = await getWorkspaces();
+  const userPlan = await getUserPlan();
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40 md:flex-row">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r bg-background sm:flex">
-        <div className="flex h-[60px] items-center px-6">
-          <Link className="flex items-center gap-2 font-semibold" href="#">
-            <LinkIcon className="h-6 w-6" />
-            <span className="">BharatLinks</span>
-          </Link>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex h-16 items-center border-b px-6">
+            <Link className="flex items-center gap-2 font-semibold text-lg" href="#">
+              <LinkIcon className="h-5 w-5" />
+              <span>BharatLinks</span>
+            </Link>
+          </div>
+          
+          {/* Workspace Switcher */}
+          <div className="border-b px-3 py-3">
+            <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={workspaceId} />
+          </div>
+          
+          {/* Navigation */}
+          <nav className="flex-1 space-y-1 p-2">
+            <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
+            <NavLink href={`/app/${workspaceId}/links`} icon="links" label="Links" />
+            <NavLink href={`/app/${workspaceId}/analytics`} icon="analytics" label="Analytics" />
+            <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
+          </nav>
+          
+          {/* Plan Usage */}
+          <div className="border-t p-4">
+            <PlanUsage workspaceId={workspaceId} />
+          </div>
         </div>
-        <div className="px-4 py-2">
-          <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={workspaceId} />
-        </div>
-        <nav className="grid gap-1 px-4 text-sm font-medium mt-4">
-          <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
-          <NavLink href={`/app/${workspaceId}/links`} icon="links" label="Links" />
-          <NavLink href={`/app/${workspaceId}/analytics`} icon="analytics" label="Analytics" />
-          <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
-        </nav>
       </aside>
       <div className="flex flex-col min-h-screen w-full sm:pl-64">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-4 sm:px-8">
@@ -45,34 +61,46 @@ const DashboardLayout = async ({
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
-              <nav className="grid gap-6 text-lg font-medium">
-                <Link
-                  href="#"
-                  className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
-                >
-                  <LinkIcon className="h-5 w-5 transition-all group-hover:scale-110" />
-                  <span className="sr-only">BharatLinks</span>
-                </Link>
-                <div className="px-2">
+            <SheetContent side="left" className="sm:max-w-xs flex flex-col p-0">
+              <div className="flex flex-col h-full">
+                {/* Logo */}
+                <div className="flex h-16 items-center border-b px-6">
+                  <Link className="flex items-center gap-2 font-semibold text-lg" href="#">
+                    <LinkIcon className="h-5 w-5" />
+                    <span>BharatLinks</span>
+                  </Link>
+                </div>
+                
+                {/* Workspace Switcher */}
+                <div className="border-b px-3 py-3">
                   <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={workspaceId} />
                 </div>
-                <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
-                <NavLink href={`/app/${workspaceId}/links`} icon="links" label="Links" />
-                <NavLink
-                  href={`/app/${workspaceId}/analytics`}
-                  icon="analytics"
-                  label="Analytics"
-                />
-                <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
-              </nav>
+                
+                {/* Navigation */}
+                <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
+                  <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
+                  <NavLink href={`/app/${workspaceId}/links`} icon="links" label="Links" />
+                  <NavLink
+                    href={`/app/${workspaceId}/analytics`}
+                    icon="analytics"
+                    label="Analytics"
+                  />
+                  <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
+                </nav>
+                
+                {/* Plan Usage */}
+                <div className="border-t p-4">
+                  <PlanUsage workspaceId={workspaceId} />
+                </div>
+              </div>
             </SheetContent>
           </Sheet>
           <div className="ml-auto flex items-center gap-4">
+            <PlanBadge plan={userPlan} />
             <UserButton afterSignOutUrl="/" />
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-slate-50/30 w-full overflow-x-hidden">
+        <main className="flex-1 pl-2 pr-2 lg:pr-8 pt-2 pb-2 lg:pt-8 lg:pb-8 bg-slate-50/30 w-full overflow-x-hidden">
           {children}
         </main>
       </div>

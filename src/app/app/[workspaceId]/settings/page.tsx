@@ -9,10 +9,15 @@ const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string 
   const templates = await getUtmTemplates(workspaceId);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">General Settings</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Manage your workspace settings and UTM templates.
+        </p>
+      </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Create UTM Template</CardTitle>
@@ -24,7 +29,7 @@ const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string 
                 "use server";
                 await createUtmTemplate(formData, workspaceId);
               }}
-              className="space-y-4"
+              className="space-y-3"
             >
               <div className="space-y-2">
                 <Label htmlFor="name">Template Name</Label>
@@ -55,9 +60,9 @@ const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string 
             <CardDescription>Manage your existing presets.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {templates.map((t) => (
-                <div key={t.id} className="flex flex-col gap-1 rounded-md border p-3">
+                <div key={t.id} className="flex flex-col gap-1 rounded-md border p-2.5">
                   <div className="font-medium">{t.name}</div>
                   <div className="text-xs text-muted-foreground">
                     ?utm_source={t.source}&utm_medium={t.medium}...

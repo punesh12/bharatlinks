@@ -7,6 +7,7 @@ import { eq, desc, asc, count, and, or, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { UAParser } from "ua-parser-js";
+import { canCreateLink } from "@/lib/utils/plans";
 
 /**
  * Validates and normalizes a URL
@@ -65,6 +66,12 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
   if (!workspaceId) {
     console.error("Error: workspaceId is missing in createLink");
     throw new Error("Workspace ID is required");
+  }
+
+  // Check plan limits
+  const limitCheck = await canCreateLink(workspaceId);
+  if (!limitCheck.allowed) {
+    throw new Error(limitCheck.reason || "Plan limit reached");
   }
 
   const longUrl = formData.get("longUrl") as string;
@@ -250,7 +257,7 @@ export const getLinks = async (
   }
 ) => {
   const offset = (page - 1) * limit;
-  const { search, sortBy = "createdAt", sortOrder = "desc", tagFilter = [] } = options || {};
+  const { search, sortBy = "createdAt", sortOrder = "desc" } = options || {};
 
   // Build where conditions
   const conditions = [eq(links.workspaceId, workspaceId)];

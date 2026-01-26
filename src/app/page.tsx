@@ -8,10 +8,16 @@ import {
   Zap,
   BarChart3,
   Globe2,
-  Lock,
+  IndianRupee,
+  Link2,
+  Tag,
+  Users,
+  Shield,
 } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { PricingSection } from "@/components/landing/pricing-section";
+import { FAQSection } from "@/components/landing/faq-section";
 
 const Home = async () => {
   const { userId } = await auth();
@@ -133,65 +139,121 @@ const Home = async () => {
               {/* Feature 1 */}
               <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                  <Smartphone className="h-6 w-6" />
+                  <Link2 className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Social Previews</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Smart Link Shortening</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Customize the title, description, and image that appear when your link is shared
-                  on WhatsApp and Telegram.
+                  Create short, memorable links instantly. Edit destination URLs anytime without breaking existing links. Perfect for campaigns, social media, and SMS marketing.
                 </p>
               </div>
 
               {/* Feature 2 */}
               <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
-                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                  <QrCode className="h-6 w-6" />
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <IndianRupee className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Dynamic QR Codes</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">UPI Express Links</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Generate branded QR codes that can be printed on packaging. Update the destination
-                  URL anytime without reprinting.
+                  Create payment links that open directly in UPI apps. One-click payments via PhonePe, Google Pay, Paytm, and more. Accept payments seamlessly without redirects.
                 </p>
               </div>
 
               {/* Feature 3 */}
               <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
-                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                  <Zap className="h-6 w-6" />
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                  <Smartphone className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Blazing Fast Redirects</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">WhatsApp Preview Cards</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Hosted on Edge locations in Mumbai & Bangalore. Your customers won&apos;t wait for
-                  the page to load.
+                  Customize title, description, and thumbnail that appear when links are shared on WhatsApp. Increase click-through rates with professional preview cards.
                 </p>
               </div>
 
               {/* Feature 4 */}
               <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
-                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <BarChart3 className="h-6 w-6" />
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                  <QrCode className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Deep Analytics</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Dynamic QR Codes</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Know exactly which city your users are from, what device they use, and which
-                  campaign drove the sale.
+                  Generate branded QR codes for print and digital use. Update destination URLs anytime without reprinting. Customize colors and add your logo.
                 </p>
               </div>
 
               {/* Feature 5 */}
               <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <Lock className="h-6 w-6" />
+                  <BarChart3 className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Advanced Analytics</h3>
+                <p className="text-slate-500 leading-relaxed">
+                  Track clicks by city, device, browser, and referrer. Know which campaigns drive sales. Export data as CSV or PDF for deeper analysis.
+                </p>
+              </div>
+
+              {/* Feature 6 */}
+              <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100 text-pink-600 group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                  <Tag className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">UTM Templates & Tags</h3>
+                <p className="text-slate-500 leading-relaxed">
+                  Save UTM parameter templates for consistent campaign tracking. Organize links with tags and powerful search. Never lose track of your campaigns.
+                </p>
+              </div>
+
+              {/* Feature 7 */}
+              <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-teal-100 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                  <Globe2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Custom Domains</h3>
+                <p className="text-slate-500 leading-relaxed">
+                  Use your own branded domain for short links. Build trust with links like yourbrand.com/offer instead of generic URLs. Multiple domains supported.
+                </p>
+              </div>
+
+              {/* Feature 8 */}
+              <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-100 text-yellow-600 group-hover:bg-yellow-600 group-hover:text-white transition-colors">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Team Collaboration</h3>
+                <p className="text-slate-500 leading-relaxed">
+                  Organize links into workspaces. Collaborate with team members. Perfect for agencies managing multiple clients or teams working on campaigns.
+                </p>
+              </div>
+
+              {/* Feature 9 */}
+              <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Blazing Fast Redirects</h3>
+                <p className="text-slate-500 leading-relaxed">
+                  Hosted on Edge locations in Mumbai & Bangalore. Sub-100ms redirect speeds for Indian users. Your customers won&apos;t wait for pages to load.
+                </p>
+              </div>
+
+              {/* Feature 10 */}
+              <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-md border border-slate-100">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-600 group-hover:text-white transition-colors">
+                  <Shield className="h-6 w-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Secure & Compliant</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Data stored locally in India. AI-powered phishing detection keeps your brand safe
-                  from scams.
+                  Data stored locally in India (DPDP Act compliant). AI-powered phishing detection. Enterprise-grade security to keep your brand safe from scams.
                 </p>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Pricing Section */}
+        <PricingSection />
+
+        {/* FAQ Section */}
+        <FAQSection />
 
         {/* CTA Section */}
         <section className="w-full py-20 bg-blue-600 text-white">
