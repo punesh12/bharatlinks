@@ -9,27 +9,32 @@ export const generateMetadata = async ({
 }: {
   params: Promise<{ shortCode: string }>;
 }): Promise<Metadata> => {
-  const { shortCode } = await params;
-  const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
+  try {
+    const { shortCode } = await params;
+    const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
 
-  if (!link) return {};
+    if (!link) return {};
 
-  return {
-    title: link.title || "Shared Link | BharatLinks",
-    description: link.description || "Join the conversation on BharatLinks.",
-    openGraph: {
+    return {
       title: link.title || "Shared Link | BharatLinks",
       description: link.description || "Join the conversation on BharatLinks.",
-      images: link.imageUrl ? [{ url: link.imageUrl }] : [],
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: link.title || "Shared Link | BharatLinks",
-      description: link.description || "Join the conversation on BharatLinks.",
-      images: link.imageUrl ? [link.imageUrl] : [],
-    },
-  };
+      openGraph: {
+        title: link.title || "Shared Link | BharatLinks",
+        description: link.description || "Join the conversation on BharatLinks.",
+        images: link.imageUrl ? [{ url: link.imageUrl }] : [],
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: link.title || "Shared Link | BharatLinks",
+        description: link.description || "Join the conversation on BharatLinks.",
+        images: link.imageUrl ? [link.imageUrl] : [],
+      },
+    };
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {};
+  }
 };
 
 const RedirectPage = async ({
@@ -37,23 +42,28 @@ const RedirectPage = async ({
 }: {
   params: Promise<{ shortCode: string }>;
 }) => {
-  const { shortCode } = await params;
-  const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
+  try {
+    const { shortCode } = await params;
+    const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
 
-  if (!link) {
+    if (!link) {
+      redirect("/");
+    }
+
+    // Increment click count
+    await db
+      .update(links)
+      .set({
+        clickCount: sql`${links.clickCount} + 1`,
+      })
+      .where(eq(links.id, link.id));
+
+    // Redirect to the long URL
+    redirect(link.longUrl);
+  } catch (error) {
+    console.error("Error redirecting:", error);
     redirect("/");
   }
-
-  // Increment click count
-  await db
-    .update(links)
-    .set({
-      clickCount: sql`${links.clickCount} + 1`,
-    })
-    .where(eq(links.id, link.id));
-
-  // Redirect to the long URL
-  redirect(link.longUrl);
 };
 
 export default RedirectPage;
