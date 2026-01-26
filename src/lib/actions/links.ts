@@ -8,6 +8,56 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { UAParser } from "ua-parser-js";
 
+/**
+ * Validates and normalizes a URL
+ * @param url - The URL to validate
+ * @returns Normalized URL or throws an error if invalid
+ */
+const validateAndNormalizeUrl = (url: string): string => {
+  if (!url || typeof url !== "string") {
+    throw new Error("URL is required");
+  }
+
+  const trimmedUrl = url.trim();
+
+  if (trimmedUrl.length === 0) {
+    throw new Error("URL cannot be empty");
+  }
+
+  // Try to parse as-is first
+  try {
+    const urlObj = new URL(trimmedUrl);
+    // Ensure it's http or https
+    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+      throw new Error("URL must use http:// or https:// protocol");
+    }
+    return urlObj.toString();
+  } catch {
+    // If parsing fails, try adding https://
+    try {
+      const urlWithProtocol = `https://${trimmedUrl}`;
+      const urlObj = new URL(urlWithProtocol);
+      // Validate it's a valid domain format
+      if (!urlObj.hostname || urlObj.hostname.length === 0) {
+        throw new Error("Invalid URL format");
+      }
+      // Check for basic domain pattern (at least one dot or localhost)
+      if (
+        !urlObj.hostname.includes(".") &&
+        urlObj.hostname !== "localhost" &&
+        !urlObj.hostname.match(/^\[.*\]$/) // IPv6
+      ) {
+        throw new Error("Invalid domain format");
+      }
+      return urlObj.toString();
+    } catch  {
+      throw new Error(
+        `Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)`
+      );
+    }
+  }
+};
+
 export const createLink = async (workspaceId: string, formData: FormData) => {
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
@@ -20,35 +70,57 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
   const longUrl = formData.get("longUrl") as string;
   const shortCode = (formData.get("shortCode") as string) || nanoid(6);
 
-  // UTM params
-  const utmSource = formData.get("utm_source") as string;
-  const utmMedium = formData.get("utm_medium") as string;
-  const utmCampaign = formData.get("utm_campaign") as string;
+  // UPI Fields - check type first to skip URL validation for UPI links
+  const type = (formData.get("type") as "standard" | "upi") || "standard";
+  const upiVpa = formData.get("upiVpa") as string;
+  const upiName = formData.get("upiName") as string;
+  const upiAmount = formData.get("upiAmount") as string;
+  const upiNote = formData.get("upiNote") as string;
 
-  // Construct final URL with UTMs if present
-  let finalUrl = longUrl;
-  if (utmSource || utmMedium || utmCampaign) {
+  // Validate UPI link has required VPA
+  if (type === "upi" && (!upiVpa || upiVpa.trim().length === 0)) {
+    throw new Error("UPI ID (VPA) is required for UPI Express links");
+  }
+
+  // Validate and normalize URL (skip for UPI links as they use placeholder URL)
+  let normalizedUrl: string;
+  let finalUrl: string;
+  
+  if (type === "upi") {
+    // For UPI links, use the placeholder URL as-is
+    finalUrl = longUrl || "https://bharatlinks.in/upi-redirect";
+  } else {
+    // Validate and normalize standard URLs
     try {
-      const urlObj = new URL(longUrl);
-      if (utmSource) urlObj.searchParams.set("utm_source", utmSource);
-      if (utmMedium) urlObj.searchParams.set("utm_medium", utmMedium);
-      if (utmCampaign) urlObj.searchParams.set("utm_campaign", utmCampaign);
-      finalUrl = urlObj.toString();
-    } catch {
-      finalUrl = longUrl;
+      normalizedUrl = validateAndNormalizeUrl(longUrl);
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Invalid URL");
+    }
+
+    // UTM params
+    const utmSource = formData.get("utm_source") as string;
+    const utmMedium = formData.get("utm_medium") as string;
+    const utmCampaign = formData.get("utm_campaign") as string;
+
+    // Construct final URL with UTMs if present
+    finalUrl = normalizedUrl;
+    if (utmSource || utmMedium || utmCampaign) {
+      try {
+        const urlObj = new URL(normalizedUrl);
+        if (utmSource) urlObj.searchParams.set("utm_source", utmSource);
+        if (utmMedium) urlObj.searchParams.set("utm_medium", utmMedium);
+        if (utmCampaign) urlObj.searchParams.set("utm_campaign", utmCampaign);
+        finalUrl = urlObj.toString();
+      } catch {
+        // If UTM addition fails, use normalized URL without UTMs
+        finalUrl = normalizedUrl;
+      }
     }
   }
 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const imageUrl = formData.get("imageUrl") as string;
-
-  // UPI Fields
-  const type = (formData.get("type") as "standard" | "upi") || "standard";
-  const upiVpa = formData.get("upiVpa") as string;
-  const upiName = formData.get("upiName") as string;
-  const upiAmount = formData.get("upiAmount") as string;
-  const upiNote = formData.get("upiNote") as string;
 
   // Tags - store as comma-separated string
   const tagsInput = formData.get("tags") as string;
@@ -98,9 +170,17 @@ export const updateLink = async (linkId: string, workspaceId: string, formData: 
         .join(",")
     : null;
 
+  // Validate and normalize URL
+  let normalizedUrl: string;
+  try {
+    normalizedUrl = validateAndNormalizeUrl(longUrl);
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Invalid URL");
+  }
+
   await db
     .update(links)
-    .set({ title, description, imageUrl, longUrl, tags: tagsString })
+    .set({ title, description, imageUrl, longUrl: normalizedUrl, tags: tagsString })
     .where(eq(links.id, linkId));
 
   revalidatePath(`/app/${workspaceId}`);
@@ -170,9 +250,7 @@ export const getLinks = async (
   }
 ) => {
   const offset = (page - 1) * limit;
-  const { search, sortBy = "createdAt", sortOrder = "desc", 
-    // tagFilter = []
-   } = options || {};
+  const { search, sortBy = "createdAt", sortOrder = "desc", tagFilter = [] } = options || {};
 
   // Build where conditions
   const conditions = [eq(links.workspaceId, workspaceId)];

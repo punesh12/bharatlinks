@@ -42,6 +42,7 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
   const [description, setDescription] = useState(link.description || "");
   const [imageUrl, setImageUrl] = useState(link.imageUrl || "");
   const [longUrl, setLongUrl] = useState(link.longUrl || "");
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>(
     link.tags ? link.tags.map((t) => t.name.toLowerCase()) : []
   );
@@ -52,8 +53,71 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
     getAllTags(workspaceId).then(setAvailableTags).catch(() => setAvailableTags([]));
   }, [workspaceId]);
 
+  // URL validation function
+  const validateUrl = (url: string): string | null => {
+    if (!url || typeof url !== "string") {
+      return "URL is required";
+    }
+
+    const trimmedUrl = url.trim();
+
+    if (trimmedUrl.length === 0) {
+      return "URL cannot be empty";
+    }
+
+    // Try to parse as-is first
+    try {
+      const urlObj = new URL(trimmedUrl);
+      // Ensure it's http or https
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return "URL must use http:// or https:// protocol";
+      }
+      return null; // Valid URL
+    } catch {
+      // If parsing fails, try adding https://
+      try {
+        const urlWithProtocol = `https://${trimmedUrl}`;
+        const urlObj = new URL(urlWithProtocol);
+        // Validate it's a valid domain format
+        if (!urlObj.hostname || urlObj.hostname.length === 0) {
+          return "Invalid URL format";
+        }
+        // Check for basic domain pattern (at least one dot or localhost)
+        if (
+          !urlObj.hostname.includes(".") &&
+          urlObj.hostname !== "localhost" &&
+          !urlObj.hostname.match(/^\[.*\]$/) // IPv6
+        ) {
+          return "Invalid domain format";
+        }
+        return null; // Valid URL (will be normalized)
+      } catch {
+        return "Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)";
+      }
+    }
+  };
+
+  const handleUrlChange = (value: string) => {
+    setLongUrl(value);
+    if (value.trim()) {
+      const error = validateUrl(value);
+      setUrlError(error);
+    } else {
+      setUrlError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Validate URL before submission
+    const error = validateUrl(longUrl);
+    if (error) {
+      setUrlError(error);
+      toast.error(error);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -63,8 +127,14 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
       await updateLink(link.id, workspaceId, formData);
       toast.success("Link updated successfully!");
       onClose();
-    } catch {
-      toast.error("Failed to update link");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update link";
+      toast.error(errorMessage);
+      // If it's a URL validation error, show it in the UI
+      if (errorMessage.includes("URL") || errorMessage.includes("Invalid")) {
+        setUrlError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -95,9 +165,13 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                   id="longUrl"
                   name="longUrl"
                   value={longUrl}
-                  onChange={(e) => setLongUrl(e.target.value)}
+                  onChange={(e) => handleUrlChange(e.target.value)}
                   required
+                  className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {urlError && (
+                  <p className="text-sm text-red-600 mt-1">{urlError}</p>
+                )}
               </div>
             </div>
 

@@ -8,8 +8,23 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 const DashboardContent = async ({ workspaceId }: { workspaceId: string }) => {
-  const { links } = await getLinks(workspaceId, 1, 5); // Get only first 5 links for dashboard
-  const templates = await getUtmTemplates(workspaceId);
+  let links: Awaited<ReturnType<typeof getLinks>>["links"] = [];
+  let templates: Awaited<ReturnType<typeof getUtmTemplates>> = [];
+
+  try {
+    const linksResult = await getLinks(workspaceId, 1, 5); // Get only first 5 links for dashboard
+    links = linksResult.links;
+  } catch (error) {
+    console.error("Error fetching links:", error);
+    // Continue with empty links array
+  }
+
+  try {
+    templates = await getUtmTemplates(workspaceId);
+  } catch (error) {
+    console.error("Error fetching templates:", error);
+    // Continue with empty templates array
+  }
 
   return (
     <div className="space-y-8 w-full">
