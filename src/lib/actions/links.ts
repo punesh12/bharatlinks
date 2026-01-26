@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import { links, geoRules } from "@/db/schema";
+import { links, geoRules, analytics } from "@/db/schema";
 import { currentUser } from "@clerk/nextjs/server";
-import { eq, desc, asc, count, and, or, like } from "drizzle-orm";
+import { eq, desc, asc, count, and, or, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
+import { UAParser } from "ua-parser-js";
 
 export const createLink = async (workspaceId: string, formData: FormData) => {
   const user = await currentUser();
@@ -347,5 +348,64 @@ export const getAllTags = async (workspaceId: string) => {
   } catch (error) {
     console.warn("Failed to fetch tags:", error);
     return [];
+  }
+};
+
+export const trackLinkClick = async (
+  linkId: string,
+  requestHeaders: {
+    userAgent?: string | null;
+    referer?: string | null;
+    forwardedFor?: string | null;
+    realIp?: string | null;
+  }
+) => {
+  try {
+    const { userAgent = "", referer, forwardedFor, realIp } = requestHeaders;
+
+    // Get IP address
+    const ip = forwardedFor?.split(",")[0]?.trim() || realIp || "Unknown";
+
+    // Parse user agent
+    const parser = new UAParser(userAgent || "");
+    const uaResult = parser.getResult();
+
+    // Extract device, OS, and browser info
+    const deviceType = uaResult.device.type || "desktop";
+    const device =
+      deviceType === "mobile" ? "mobile" : deviceType === "tablet" ? "tablet" : "desktop";
+    const os = uaResult.os.name || "Unknown";
+    const browser = uaResult.browser.name || "Unknown";
+
+    // Get referrer
+    const referrer = referer && referer !== "Direct" ? referer : null;
+
+    // Create analytics record
+    await db.insert(analytics).values({
+      linkId,
+      ip,
+      device,
+      os,
+      browser,
+      referrer,
+      userAgent: userAgent || null,
+      // Note: Country, city, region, continent would require IP geolocation service
+      // For now, leaving them as null
+      country: null,
+      city: null,
+      region: null,
+      continent: null,
+    });
+
+    // Increment click count
+    await db
+      .update(links)
+      .set({
+        clickCount: sql`${links.clickCount} + 1`,
+      })
+      .where(eq(links.id, linkId));
+  } catch (error) {
+    console.error("Failed to track link click:", error);
+    // Don't throw - we don't want to block the redirect if analytics fails
   }
 };

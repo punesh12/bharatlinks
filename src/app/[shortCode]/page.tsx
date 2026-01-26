@@ -1,8 +1,10 @@
 import { db } from "@/db";
 import { links } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { trackLinkClick } from "@/lib/actions/links";
 
 export const generateMetadata = async ({
   params,
@@ -42,28 +44,37 @@ const RedirectPage = async ({
 }: {
   params: Promise<{ shortCode: string }>;
 }) => {
-  try {
-    const { shortCode } = await params;
-    const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
+  const { shortCode } = await params;
+  const headersList = await headers();
+  
+  const [link] = await db.select().from(links).where(eq(links.shortCode, shortCode));
 
-    if (!link) {
-      redirect("/");
-    }
-
-    // Increment click count
-    await db
-      .update(links)
-      .set({
-        clickCount: sql`${links.clickCount} + 1`,
-      })
-      .where(eq(links.id, link.id));
-
-    // Redirect to the long URL
-    redirect(link.longUrl);
-  } catch (error) {
-    console.error("Error redirecting:", error);
-    redirect("/");
+  if (!link) {
+    notFound();
   }
+
+  // Normalize URL - ensure it has a protocol
+  let redirectUrl = link.longUrl.trim();
+  if (!redirectUrl.startsWith("http://") && !redirectUrl.startsWith("https://")) {
+    redirectUrl = `https://${redirectUrl}`;
+  }
+
+  // Get request information for analytics
+  const userAgent = headersList.get("user-agent");
+  const referer = headersList.get("referer") || headersList.get("referrer");
+  const forwardedFor = headersList.get("x-forwarded-for");
+  const realIp = headersList.get("x-real-ip");
+
+  // Track analytics and increment click count (fire and forget to avoid blocking redirect)
+  trackLinkClick(link.id, {
+    userAgent,
+    referer,
+    forwardedFor,
+    realIp,
+  }).catch((err) => console.error("Failed to track link click:", err));
+
+  // Redirect to the normalized long URL
+  redirect(redirectUrl);
 };
 
 export default RedirectPage;
