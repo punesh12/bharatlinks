@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createWorkspace } from "@/lib/actions/workspaces";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // Placeholder for Avatar func
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
@@ -36,6 +37,8 @@ export const WorkspaceSwitcher = ({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [showNewWorkspaceDialog, setShowNewWorkspaceDialog] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const selectedWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) || workspaces[0];
 
@@ -113,21 +116,53 @@ export const WorkspaceSwitcher = ({
         </DialogHeader>
         <form
           action={async (formData) => {
-            await createWorkspace(formData);
-            setShowNewWorkspaceDialog(false);
+            try {
+              setError(null);
+              setIsSubmitting(true);
+              await createWorkspace(formData);
+              setShowNewWorkspaceDialog(false);
+              router.refresh();
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : "Failed to create workspace";
+              setError(errorMessage);
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <div className="space-y-4 py-2 pb-4">
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                <p className="text-sm text-red-800">{error}</p>
+                {error.includes("workspace limit") && (
+                  <Link
+                    href={`/app/${currentWorkspaceId}/settings/billing`}
+                    className="text-sm text-red-600 hover:text-red-700 underline mt-2 inline-block"
+                  >
+                    Upgrade to create more workspaces →
+                  </Link>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="name">Team name</Label>
-              <Input id="name" name="name" placeholder="Acme Inc." />
+              <Input id="name" name="name" placeholder="Acme Inc." required />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewWorkspaceDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewWorkspaceDialog(false);
+                setError(null);
+              }}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">Continue</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Continue"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

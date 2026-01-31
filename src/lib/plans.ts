@@ -7,8 +7,9 @@ export type PlanTier = "free" | "starter" | "pro" | "organization";
 
 export interface PlanLimits {
   monthlyLinks: number | null; // null = unlimited
-  customDomains: number;
-  teamMembers: number;
+  workspaces: number | null; // null = unlimited
+  customDomains: number | null; // null = unlimited
+  teamMembers: number | null; // null = unlimited
   advancedAnalytics: boolean;
   deepLinking: boolean;
   whatsappCustomization: boolean;
@@ -38,6 +39,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     limits: {
       monthlyLinks: 50,
+      workspaces: 1,
       customDomains: 0,
       teamMembers: 1,
       advancedAnalytics: false,
@@ -51,6 +53,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     features: [
       "50 links/month",
+      "1 workspace",
       "Basic analytics (click count only)",
       "QR codes",
       "UTM templates",
@@ -65,6 +68,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     limits: {
       monthlyLinks: 500,
+      workspaces: 3,
       customDomains: 1,
       teamMembers: 1,
       advancedAnalytics: false,
@@ -78,6 +82,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     features: [
       "500 links/month",
+      "3 workspaces",
       "1 custom domain",
       "QR code customization",
       "Last 30 days analytics",
@@ -94,6 +99,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     limits: {
       monthlyLinks: null, // unlimited
+      workspaces: null, // unlimited
       customDomains: 5,
       teamMembers: 3,
       advancedAnalytics: true,
@@ -107,6 +113,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     features: [
       "Unlimited links",
+      "Unlimited workspaces",
       "5 custom domains",
       "Deep linking (app routing)",
       "WhatsApp preview customization",
@@ -125,6 +132,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     },
     limits: {
       monthlyLinks: null, // unlimited
+      workspaces: null, // unlimited
       customDomains: null, // unlimited
       teamMembers: null, // unlimited
       advancedAnalytics: true,

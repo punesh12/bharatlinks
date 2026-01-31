@@ -5,6 +5,7 @@ import { users, workspaceMembers, workspaces } from "@/db/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { canCreateWorkspace } from "@/lib/utils/plans";
 
 export const createWorkspace = async (formData: FormData) => {
   const user = await currentUser();
@@ -12,6 +13,12 @@ export const createWorkspace = async (formData: FormData) => {
 
   const name = formData.get("name") as string;
   if (!name) throw new Error("Name is required");
+
+  // Check workspace limit
+  const limitCheck = await canCreateWorkspace();
+  if (!limitCheck.allowed) {
+    throw new Error(limitCheck.reason || "Workspace limit reached");
+  }
 
   // Ensure user exists in our DB (sync if needed)
   // In a real app, use webhooks. Here we just upsert for safety on action.

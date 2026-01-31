@@ -286,6 +286,11 @@ export const CreateLinkModal = ({
                 
                 // Check if it's a plan limit error
                 if (errorMessage.includes("limit") || errorMessage.includes("Plan limit")) {
+                  // Extract limit info from error message for better modal display
+                  const limitMatch = errorMessage.match(/(\d+)\s*links/);
+                  if (limitMatch && linkLimit) {
+                    // Modal will use linkLimit state which is already set
+                  }
                   setUpgradeOpen(true);
                   toast.error(errorMessage);
                 } else {
