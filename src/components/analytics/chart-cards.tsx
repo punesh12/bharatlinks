@@ -9,14 +9,14 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
 } from "recharts";
 import { PieBreakdownCard } from "./pie-breakdown-card";
 import { BarChart as BarChartIcon, MapPin } from "lucide-react";
 
 export const ClickTrendChart = ({ data }: { data: { date: string; clicks: number }[] }) => {
   const hasData = data && data.length > 0 && data.some((d) => d.clicks > 0);
-  
+
   return (
     <Card className="col-span-full lg:col-span-2 border-slate-200 shadow-sm">
       <CardHeader className="pb-1.5">
@@ -89,7 +89,7 @@ export const ClickTrendChart = ({ data }: { data: { date: string; clicks: number
 
 export const DeviceBreakdown = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
-  
+
   return (
     <PieBreakdownCard
       title="Device Distribution"
@@ -104,7 +104,7 @@ export const DeviceBreakdown = ({ data }: { data: { name: string; value: number 
 
 export const BrowserBreakdown = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
-  
+
   return (
     <PieBreakdownCard
       title="Browser Usage"
@@ -119,7 +119,7 @@ export const BrowserBreakdown = ({ data }: { data: { name: string; value: number
 
 export const OSBreakdown = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
-  
+
   return (
     <PieBreakdownCard
       title="Operating Systems"
@@ -134,7 +134,7 @@ export const OSBreakdown = ({ data }: { data: { name: string; value: number }[] 
 
 export const ContinentBreakdown = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
-  
+
   return (
     <PieBreakdownCard
       title="Continents"
@@ -150,7 +150,7 @@ export const ContinentBreakdown = ({ data }: { data: { name: string; value: numb
 export const CountryBreakdown = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
   const displayData = hasData ? data.slice(0, 5) : [];
-  
+
   return (
     <Card className="col-span-full lg:col-span-1 border-slate-200 shadow-sm">
       <CardHeader className="pb-2">
@@ -161,7 +161,11 @@ export const CountryBreakdown = ({ data }: { data: { name: string; value: number
         {hasData && displayData.length > 0 ? (
           <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={displayData} layout="vertical" margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
+              <BarChart
+                data={displayData}
+                layout="vertical"
+                margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
+              >
                 <XAxis type="number" hide />
                 <YAxis
                   dataKey="name"
@@ -203,7 +207,7 @@ export const CountryBreakdown = ({ data }: { data: { name: string; value: number
 export const ReferrerList = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0;
   const maxValue = hasData ? Math.max(...data.map((d) => d.value)) : 1;
-  
+
   return (
     <Card className="col-span-full lg:col-span-1 border-slate-200 shadow-sm">
       <CardHeader className="pb-1.5">
@@ -219,9 +223,7 @@ export const ReferrerList = ({ data }: { data: { name: string; value: number }[]
                   <span className="text-xs font-medium text-slate-700 truncate flex-1">
                     {item.name || "Direct / Social Media"}
                   </span>
-                  <span className="text-xs font-bold text-slate-900 shrink-0">
-                    {item.value}
-                  </span>
+                  <span className="text-xs font-bold text-slate-900 shrink-0">{item.value}</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div
@@ -250,7 +252,7 @@ export const ReferrerList = ({ data }: { data: { name: string; value: number }[]
 
 export const CityList = ({ data }: { data: { name: string; value: number }[] }) => {
   const hasData = data && data.length > 0;
-  
+
   return (
     <Card className="col-span-full lg:col-span-1 border-slate-200 shadow-sm">
       <CardHeader className="pb-3">

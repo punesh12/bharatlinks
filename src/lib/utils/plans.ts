@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { users, links, workspaceMembers } from "@/db/schema";
+import { users, links, workspaceMembers, workspaceInvitations, activityLogs } from "@/db/schema";
 import { eq, and, gte, count, inArray } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { getPlan, type PlanTier, getLimit, isUnlimited } from "@/lib/plans";
@@ -47,40 +47,49 @@ const getUserWorkspaceIds = async (): Promise<string[]> => {
 };
 
 /**
- * Get monthly link count across all user workspaces
+ * Get monthly link count for links created by the current user
+ * This counts links the user actually created, not all links in workspaces they're a member of
  */
 export const getMonthlyLinkCount = async (workspaceId?: string): Promise<number> => {
+  const user = await currentUser();
+  if (!user) return 0;
+
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  // If workspaceId is provided, count only for that workspace (for backward compatibility)
-  // Otherwise, count across all user workspaces
+  // Count links created by the current user using activity logs
+  // This ensures we only count links the user actually created, not all links in workspaces they joined
   if (workspaceId) {
+    // Count links created by user in the specific workspace
     const [result] = await db
       .select({ count: count() })
-      .from(links)
+      .from(activityLogs)
       .where(
         and(
-          eq(links.workspaceId, workspaceId),
-          gte(links.createdAt, startOfMonth)
+          eq(activityLogs.userId, user.id),
+          eq(activityLogs.workspaceId, workspaceId),
+          eq(activityLogs.action, "link.created"),
+          gte(activityLogs.createdAt, startOfMonth)
         )
       );
 
     return result?.count || 0;
   }
 
-  // Count across all user workspaces
+  // Count links created by user across all workspaces they're a member of
   const userWorkspaceIds = await getUserWorkspaceIds();
   if (userWorkspaceIds.length === 0) return 0;
 
   const [result] = await db
     .select({ count: count() })
-    .from(links)
+    .from(activityLogs)
     .where(
       and(
-        inArray(links.workspaceId, userWorkspaceIds),
-        gte(links.createdAt, startOfMonth)
+        eq(activityLogs.userId, user.id),
+        inArray(activityLogs.workspaceId, userWorkspaceIds),
+        eq(activityLogs.action, "link.created"),
+        gte(activityLogs.createdAt, startOfMonth)
       )
     );
 
@@ -92,7 +101,9 @@ export const getMonthlyLinkCount = async (workspaceId?: string): Promise<number>
  * Note: workspaceId parameter is kept for backward compatibility but usage is now aggregated across all user workspaces
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const canCreateLink = async (_workspaceId: string): Promise<{
+export const canCreateLink = async (
+  _workspaceId: string
+): Promise<{
   allowed: boolean;
   reason?: string;
   currentCount?: number;
@@ -137,6 +148,10 @@ export const canCreateLink = async (_workspaceId: string): Promise<{
 /**
  * Get current workspace count for the user
  */
+/**
+ * Get count of workspaces where user is OWNER (not member)
+ * Users can be members of unlimited workspaces, but can only own limited workspaces
+ */
 export const getUserWorkspaceCount = async (): Promise<number> => {
   const user = await currentUser();
   if (!user) return 0;
@@ -144,7 +159,7 @@ export const getUserWorkspaceCount = async (): Promise<number> => {
   const userWorkspaces = await db
     .select({ count: count() })
     .from(workspaceMembers)
-    .where(eq(workspaceMembers.userId, user.id));
+    .where(and(eq(workspaceMembers.userId, user.id), eq(workspaceMembers.role, "owner")));
 
   return userWorkspaces[0]?.count || 0;
 };
@@ -193,10 +208,84 @@ export const canCreateWorkspace = async (): Promise<{
  * Check if user has access to a feature
  */
 export const hasFeatureAccess = async (
-  feature: "customDomains" | "deepLinking" | "advancedAnalytics" | "dataExport" | "apiAccess" | "whatsappCustomization" | "qrCustomization"
+  feature:
+    | "customDomains"
+    | "deepLinking"
+    | "advancedAnalytics"
+    | "dataExport"
+    | "apiAccess"
+    | "whatsappCustomization"
+    | "qrCustomization"
 ): Promise<boolean> => {
   const planTier = await getUserPlan();
   return getPlan(planTier).limits[feature] === true;
+};
+
+/**
+ * Check if user can add more team members to a workspace
+ */
+export const canAddTeamMember = async (
+  workspaceId: string
+): Promise<{
+  allowed: boolean;
+  reason?: string;
+  currentCount?: number;
+  limit?: number;
+}> => {
+  const user = await currentUser();
+  if (!user) {
+    return { allowed: false, reason: "Unauthorized" };
+  }
+
+  const planTier = await getUserPlan();
+  const limit = getLimit(planTier, "teamMembers");
+
+  // Check if unlimited
+  if (limit === null) {
+    return { allowed: true };
+  }
+
+  try {
+    // Count current members and pending invitations
+    const [currentMembers, pendingInvitations] = await Promise.all([
+      db.select().from(workspaceMembers).where(eq(workspaceMembers.workspaceId, workspaceId)),
+      db
+        .select()
+        .from(workspaceInvitations)
+        .where(
+          and(
+            eq(workspaceInvitations.workspaceId, workspaceId),
+            eq(workspaceInvitations.status, "pending")
+          )
+        ),
+    ]);
+
+    const totalCount = currentMembers.length + pendingInvitations.length;
+
+    if (totalCount >= limit) {
+      return {
+        allowed: false,
+        reason: `Team member limit reached (${limit} members). Upgrade to add more members.`,
+        currentCount: totalCount,
+        limit,
+      };
+    }
+
+    return {
+      allowed: true,
+      currentCount: totalCount,
+      limit,
+    };
+  } catch (error) {
+    // If tables don't exist yet (migration not run), allow adding members
+    // This prevents 500 errors during development
+    console.error("Error checking team member limits (tables may not exist):", error);
+    return {
+      allowed: true,
+      currentCount: 0,
+      limit,
+    };
+  }
 };
 
 /**

@@ -1,10 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -84,14 +81,15 @@ export const UtmModal = ({
   const buildPreviewUrl = () => {
     const baseUrl = longUrl || "https://example.com";
     const params: string[] = [];
-    
+
     if (source) params.push(`utm_source=${encodeURIComponent(source).replace(/%20/g, "+")}`);
     if (medium) params.push(`utm_medium=${encodeURIComponent(medium).replace(/%20/g, "+")}`);
     if (campaign) params.push(`utm_campaign=${encodeURIComponent(campaign).replace(/%20/g, "+")}`);
     if (localTerm) params.push(`utm_term=${encodeURIComponent(localTerm).replace(/%20/g, "+")}`);
-    if (localContent) params.push(`utm_content=${encodeURIComponent(localContent).replace(/%20/g, "+")}`);
+    if (localContent)
+      params.push(`utm_content=${encodeURIComponent(localContent).replace(/%20/g, "+")}`);
     if (localReferral) params.push(`ref=${encodeURIComponent(localReferral).replace(/%20/g, "+")}`);
-    
+
     return params.length > 0 ? `${baseUrl}?${params.join("&")}` : baseUrl;
   };
 
@@ -199,11 +197,15 @@ export const UtmModal = ({
             </SelectContent>
           </Select>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} className="h-9 px-4 border-slate-300 bg-white">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="h-9 px-4 border-slate-300 bg-white"
+            >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300"
             >
               Save

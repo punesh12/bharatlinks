@@ -21,7 +21,7 @@ interface NavLinkProps {
 
 export const NavLink = ({ href, icon, label, onClick }: NavLinkProps) => {
   const pathname = usePathname();
-  
+
   // Improved active state detection
   let isActive = false;
   if (href.endsWith("/settings")) {
@@ -31,7 +31,7 @@ export const NavLink = ({ href, icon, label, onClick }: NavLinkProps) => {
     // For other routes, match exact path
     isActive = pathname === href;
   }
-  
+
   const Icon = iconMap[icon];
 
   return (
@@ -41,9 +41,7 @@ export const NavLink = ({ href, icon, label, onClick }: NavLinkProps) => {
       className={cn(
         "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
         "hover:bg-accent hover:text-accent-foreground",
-        isActive
-          ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground"
+        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
       )}
     >
       <Icon

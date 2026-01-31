@@ -105,9 +105,7 @@ export const UpgradeModal = ({
                           Current
                         </Badge>
                       )}
-                      {isSuggested && (
-                        <Badge className="ml-2 bg-purple-600">Recommended</Badge>
-                      )}
+                      {isSuggested && <Badge className="ml-2 bg-purple-600">Recommended</Badge>}
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold">
@@ -115,9 +113,7 @@ export const UpgradeModal = ({
                         <span className="text-sm font-normal text-slate-500">/mo</span>
                       </div>
                       {plan.price.yearly > 0 && (
-                        <div className="text-xs text-slate-500">
-                          or ₹{plan.price.yearly}/year
-                        </div>
+                        <div className="text-xs text-slate-500">or ₹{plan.price.yearly}/year</div>
                       )}
                     </div>
                   </div>
@@ -137,9 +133,7 @@ export const UpgradeModal = ({
                     </Button>
                   ) : (
                     <Button
-                      className={`w-full ${
-                        isSuggested ? "bg-purple-600 hover:bg-purple-700" : ""
-                      }`}
+                      className={`w-full ${isSuggested ? "bg-purple-600 hover:bg-purple-700" : ""}`}
                       onClick={() => {
                         // TODO: Integrate with payment gateway (Razorpay/Stripe)
                         window.open("/app/settings?tab=billing", "_blank");

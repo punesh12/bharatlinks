@@ -143,7 +143,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Smart Link Shortening</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Create short, memorable links instantly. Edit destination URLs anytime without breaking existing links. Perfect for campaigns, social media, and SMS marketing.
+                  Create short, memorable links instantly. Edit destination URLs anytime without
+                  breaking existing links. Perfect for campaigns, social media, and SMS marketing.
                 </p>
               </div>
 
@@ -154,7 +155,9 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">UPI Express Links</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Create payment links that open directly in UPI apps. One-click payments via PhonePe, Google Pay, Paytm, and more. Accept payments seamlessly without redirects.
+                  Create payment links that open directly in UPI apps. One-click payments via
+                  PhonePe, Google Pay, Paytm, and more. Accept payments seamlessly without
+                  redirects.
                 </p>
               </div>
 
@@ -165,7 +168,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">WhatsApp Preview Cards</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Customize title, description, and thumbnail that appear when links are shared on WhatsApp. Increase click-through rates with professional preview cards.
+                  Customize title, description, and thumbnail that appear when links are shared on
+                  WhatsApp. Increase click-through rates with professional preview cards.
                 </p>
               </div>
 
@@ -176,7 +180,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Dynamic QR Codes</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Generate branded QR codes for print and digital use. Update destination URLs anytime without reprinting. Customize colors and add your logo.
+                  Generate branded QR codes for print and digital use. Update destination URLs
+                  anytime without reprinting. Customize colors and add your logo.
                 </p>
               </div>
 
@@ -187,7 +192,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Advanced Analytics</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Track clicks by city, device, browser, and referrer. Know which campaigns drive sales. Export data as CSV or PDF for deeper analysis.
+                  Track clicks by city, device, browser, and referrer. Know which campaigns drive
+                  sales. Export data as CSV or PDF for deeper analysis.
                 </p>
               </div>
 
@@ -198,7 +204,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">UTM Templates & Tags</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Save UTM parameter templates for consistent campaign tracking. Organize links with tags and powerful search. Never lose track of your campaigns.
+                  Save UTM parameter templates for consistent campaign tracking. Organize links with
+                  tags and powerful search. Never lose track of your campaigns.
                 </p>
               </div>
 
@@ -209,7 +216,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Custom Domains</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Use your own branded domain for short links. Build trust with links like yourbrand.com/offer instead of generic URLs. Multiple domains supported.
+                  Use your own branded domain for short links. Build trust with links like
+                  yourbrand.com/offer instead of generic URLs. Multiple domains supported.
                 </p>
               </div>
 
@@ -220,7 +228,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Team Collaboration</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Organize links into workspaces. Collaborate with team members. Perfect for agencies managing multiple clients or teams working on campaigns.
+                  Organize links into workspaces. Collaborate with team members. Perfect for
+                  agencies managing multiple clients or teams working on campaigns.
                 </p>
               </div>
 
@@ -231,7 +240,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Blazing Fast Redirects</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Hosted on Edge locations in Mumbai & Bangalore. Sub-100ms redirect speeds for Indian users. Your customers won&apos;t wait for pages to load.
+                  Hosted on Edge locations in Mumbai & Bangalore. Sub-100ms redirect speeds for
+                  Indian users. Your customers won&apos;t wait for pages to load.
                 </p>
               </div>
 
@@ -242,7 +252,8 @@ const Home = async () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Secure & Compliant</h3>
                 <p className="text-slate-500 leading-relaxed">
-                  Data stored locally in India (DPDP Act compliant). AI-powered phishing detection. Enterprise-grade security to keep your brand safe from scams.
+                  Data stored locally in India (DPDP Act compliant). AI-powered phishing detection.
+                  Enterprise-grade security to keep your brand safe from scams.
                 </p>
               </div>
             </div>

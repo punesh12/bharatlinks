@@ -3,10 +3,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createUtmTemplate, getUtmTemplates } from "@/lib/actions/utms";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { workspaceMembers, workspaces } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { WorkspaceEditForm } from "@/components/settings/workspace-edit-form";
 
 const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string }> }) => {
   const { workspaceId } = await params;
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  // Check if user is a member of the workspace
+  const [member] = await db
+    .select()
+    .from(workspaceMembers)
+    .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+    .limit(1);
+
+  if (!member) {
+    redirect("/app");
+  }
+
+  // Fetch workspace data
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  if (!workspace) {
+    redirect("/app");
+  }
+
   const templates = await getUtmTemplates(workspaceId);
+  const isOwner = member.role === "owner";
 
   return (
     <div className="space-y-4">
@@ -16,6 +51,36 @@ const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string 
           Manage your workspace settings and UTM templates.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Workspace Details</CardTitle>
+          <CardDescription>
+            {isOwner
+              ? "Update your workspace name and settings."
+              : "View workspace details. Only owners can edit."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isOwner ? (
+            <WorkspaceEditForm workspaceId={workspaceId} currentName={workspace.name} />
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="workspace-name-view">Workspace Name</Label>
+              <Input
+                id="workspace-name-view"
+                value={workspace.name}
+                readOnly
+                className="bg-slate-50"
+                disabled
+              />
+              <p className="text-xs text-muted-foreground">
+                Only workspace owners can edit the workspace name.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

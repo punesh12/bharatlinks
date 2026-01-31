@@ -26,7 +26,7 @@ export const StatCard = ({
   iconColor = "text-blue-600",
 }: StatCardProps) => {
   const Icon = iconMap[icon];
-  
+
   // Map icon colors to background colors
   const bgColorMap: Record<string, string> = {
     "text-blue-600": "bg-blue-50",
@@ -47,7 +47,9 @@ export const StatCard = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-bold text-slate-900 mb-1">{typeof value === 'number' ? value.toLocaleString() : value}</div>
+        <div className="text-3xl font-bold text-slate-900 mb-1">
+          {typeof value === "number" ? value.toLocaleString() : value}
+        </div>
         <p className="text-xs text-slate-500">{description}</p>
       </CardContent>
     </Card>

@@ -30,9 +30,7 @@ export function UsageDetailsModal({
   planFeatures,
   planName,
 }: UsageDetailsModalProps) {
-  const percentage = linkUsage.limit
-    ? Math.min(100, (linkUsage.used / linkUsage.limit) * 100)
-    : 0;
+  const percentage = linkUsage.limit ? Math.min(100, (linkUsage.used / linkUsage.limit) * 100) : 0;
 
   const getProgressColor = () => {
     if (!linkUsage.limit) return "bg-blue-600";
@@ -53,9 +51,7 @@ export function UsageDetailsModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Usage Details</DialogTitle>
-          <DialogDescription>
-            Detailed breakdown of your {planName} plan usage.
-          </DialogDescription>
+          <DialogDescription>Detailed breakdown of your {planName} plan usage.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -76,10 +72,10 @@ export function UsageDetailsModal({
                       percentage >= 90
                         ? "bg-red-500"
                         : percentage >= 75
-                        ? "bg-orange-500"
-                        : percentage >= 50
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
+                          ? "bg-orange-500"
+                          : percentage >= 50
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
                     )}
                     style={{ width: `${percentage}%` }}
                   />

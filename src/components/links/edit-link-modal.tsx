@@ -53,12 +53,21 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
   const [availableTags, setAvailableTags] = React.useState<{ id: string; name: string }[]>([]);
   const [showSocial, setShowSocial] = React.useState(!!(title || description || imageUrl));
   const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
+  const [hostname, setHostname] = React.useState("bharatlinks.in");
 
   // Fetch available tags and plan info when modal opens
   React.useEffect(() => {
     if (isOpen) {
-      getAllTags(workspaceId).then(setAvailableTags).catch(() => setAvailableTags([]));
-      getUserPlan().then(setCurrentPlan).catch(() => setCurrentPlan("free"));
+      getAllTags(workspaceId)
+        .then(setAvailableTags)
+        .catch(() => setAvailableTags([]));
+      getUserPlan()
+        .then(setCurrentPlan)
+        .catch(() => setCurrentPlan("free"));
+    }
+    // Set hostname on client side only to avoid hydration mismatch
+    if (typeof window !== "undefined") {
+      setHostname(window.location.hostname);
     }
   }, [isOpen, workspaceId]);
 
@@ -139,8 +148,7 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
       toast.success("Link updated successfully!");
       onClose();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to update link";
+      const errorMessage = error instanceof Error ? error.message : "Failed to update link";
       toast.error(errorMessage);
       // If it's a URL validation error, show it in the UI
       if (errorMessage.includes("URL") || errorMessage.includes("Invalid")) {
@@ -183,9 +191,7 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                     required
                     className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
                   />
-                  {urlError && (
-                    <p className="text-sm text-red-600">{urlError}</p>
-                  )}
+                  {urlError && <p className="text-sm text-red-600">{urlError}</p>}
                 </div>
 
                 {/* Tags */}
@@ -211,12 +217,14 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                 {/* Short Link */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="shortCode" className="text-sm font-medium">Short Link</Label>
+                    <Label htmlFor="shortCode" className="text-sm font-medium">
+                      Short Link
+                    </Label>
                     <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
                   </div>
                   <div className="flex gap-2">
                     <div className="flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-l-md text-sm text-slate-600">
-                      {typeof window !== "undefined" ? window.location.hostname : "bharatlinks.in"}
+                      {hostname}
                     </div>
                     <Input
                       id="shortCode"
@@ -234,7 +242,9 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="grid gap-3">
                       <div className="grid gap-2">
-                        <Label htmlFor="title" className="text-xs">Title</Label>
+                        <Label htmlFor="title" className="text-xs">
+                          Title
+                        </Label>
                         <Input
                           id="title"
                           name="title"
@@ -244,7 +254,9 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="description" className="text-xs">Description</Label>
+                        <Label htmlFor="description" className="text-xs">
+                          Description
+                        </Label>
                         <Input
                           id="description"
                           name="description"
@@ -254,7 +266,9 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="imageUrl" className="text-xs">Image URL</Label>
+                        <Label htmlFor="imageUrl" className="text-xs">
+                          Image URL
+                        </Label>
                         <Input
                           id="imageUrl"
                           name="imageUrl"
@@ -275,11 +289,7 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
                   <Label className="text-xs font-medium text-slate-600">QR Code</Label>
                   <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center min-h-[160px]">
                     {longUrl ? (
-                      <QRCodeCanvas
-                        value={longUrl || "https://example.com"}
-                        size={100}
-                        level="H"
-                      />
+                      <QRCodeCanvas value={longUrl || "https://example.com"} size={100} level="H" />
                     ) : (
                       <div className="text-center text-slate-400">
                         <QrCode className="h-10 w-10 mx-auto mb-2 opacity-50" />

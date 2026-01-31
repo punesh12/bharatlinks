@@ -26,10 +26,7 @@ export function UpgradeButton({
 
   return (
     <Link href={billingUrl}>
-      <Button
-        className={cn(className)}
-        variant={children ? undefined : "outline"}
-      >
+      <Button className={cn(className)} variant={children ? undefined : "outline"}>
         {children || `Upgrade to ${targetPlanConfig.name}`}
       </Button>
     </Link>

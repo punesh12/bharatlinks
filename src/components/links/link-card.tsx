@@ -59,13 +59,13 @@ export const LinkCard = ({ link }: LinkCardProps) => {
     typeof link.createdAt === "string" ? new Date(link.createdAt) : link.createdAt;
   const formattedDate = format(createdAtDate, "MMM d, yyyy");
 
-  // Compute full URL lazily to avoid hydration mismatch
-  const getFullShortUrl = () => {
+  // Compute full URL using useMemo to avoid hydration mismatch
+  const fullShortUrl = useMemo(() => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}/${link.shortCode}`;
     }
     return `/${link.shortCode}`;
-  };
+  }, [link.shortCode]);
 
   // Extract domain from longUrl - memoized to ensure consistent rendering
   const domain = useMemo(() => {
@@ -89,7 +89,7 @@ export const LinkCard = ({ link }: LinkCardProps) => {
         <QRCodeModal
           isOpen={qrOpen}
           onClose={() => setQrOpen(false)}
-          shortUrl={getFullShortUrl()}
+          shortUrl={fullShortUrl}
           shortCode={link.shortCode}
         />
       )}
@@ -128,7 +128,7 @@ export const LinkCard = ({ link }: LinkCardProps) => {
 
             {/* Copy button */}
             <CopyButton
-              text={getFullShortUrl()}
+              text={fullShortUrl}
               successMessage="Short URL copied!"
               errorMessage="Failed to copy URL"
               variant="ghost"

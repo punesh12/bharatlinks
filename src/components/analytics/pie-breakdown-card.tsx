@@ -17,7 +17,7 @@ const COLORS = [
 // Context-specific color schemes
 const getColorForData = (title: string, dataName: string, index: number): string => {
   const normalizedName = dataName.toLowerCase().trim();
-  
+
   // Device Distribution colors
   if (title.toLowerCase().includes("device")) {
     if (normalizedName.includes("phone") || normalizedName.includes("mobile")) {
@@ -30,15 +30,22 @@ const getColorForData = (title: string, dataName: string, index: number): string
       return "#10b981"; // Green for desktop
     }
   }
-  
+
   // Browser Usage colors (brand colors)
   if (title.toLowerCase().includes("browser")) {
     // Check for mobile chrome first (more specific match - must come before regular chrome)
-    if (normalizedName.includes("mobile chrome") || normalizedName.includes("chrome mobile") || normalizedName.includes("mobilechrome")) {
+    if (
+      normalizedName.includes("mobile chrome") ||
+      normalizedName.includes("chrome mobile") ||
+      normalizedName.includes("mobilechrome")
+    ) {
       return "#4285f4"; // Chrome blue for mobile
     }
     // Regular Chrome (desktop) - Chrome's brand yellow/orange
-    if (normalizedName === "chrome" || (normalizedName.includes("chrome") && !normalizedName.includes("mobile"))) {
+    if (
+      normalizedName === "chrome" ||
+      (normalizedName.includes("chrome") && !normalizedName.includes("mobile"))
+    ) {
       return "#fbbc04"; // Chrome yellow/orange (Google Chrome brand color)
     }
     // Safari
@@ -70,7 +77,7 @@ const getColorForData = (title: string, dataName: string, index: number): string
       return "#ff6600"; // UC Browser orange
     }
   }
-  
+
   // Operating System colors (brand colors)
   if (title.toLowerCase().includes("operating system") || title.toLowerCase().includes("os")) {
     if (normalizedName.includes("windows")) {
@@ -89,7 +96,7 @@ const getColorForData = (title: string, dataName: string, index: number): string
       return "#fcc624"; // Linux yellow/gold
     }
   }
-  
+
   // Continent colors (geographic-inspired)
   if (title.toLowerCase().includes("continent")) {
     if (normalizedName.includes("asia")) {
@@ -111,7 +118,7 @@ const getColorForData = (title: string, dataName: string, index: number): string
       return "#06b6d4"; // Cyan for Oceania
     }
   }
-  
+
   // Default fallback - use index-based colors
   return COLORS[index % COLORS.length];
 };
@@ -136,19 +143,20 @@ export const PieBreakdownCard = ({
   layout = "vertical",
 }: PieBreakdownCardProps) => {
   const hasData = data && data.length > 0 && !data.some((d) => d.name === "No data");
-  
+
   // Calculate chart size - properly center charts
   const availableHeight = height - 50; // Account for header and padding
-  
+
   // Calculate radius based on available space - make charts fill the space properly
   // For 3-column layout, we need to balance chart size with legend space
   // Reduce radius slightly to ensure chart doesn't get cropped
   const baseRadius = Math.min(availableHeight * 0.35, 90);
-  const innerRadius = layout === "horizontal" 
-    ? baseRadius * 0.45  // Thinner donut for horizontal
-    : baseRadius * 0.55;  // Thicker donut for vertical
+  const innerRadius =
+    layout === "horizontal"
+      ? baseRadius * 0.45 // Thinner donut for horizontal
+      : baseRadius * 0.55; // Thicker donut for vertical
   const outerRadius = baseRadius;
-  
+
   return (
     <Card className={`${className} border-slate-200 shadow-sm h-full flex flex-col`}>
       <CardHeader className="pb-1.5 flex-shrink-0">
@@ -159,7 +167,12 @@ export const PieBreakdownCard = ({
         {hasData ? (
           <div style={{ height: `${height - 50}px` }} className="w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ right: layout === "vertical" ? 0 : 0, left: layout === "vertical" ? 0 : 0 }}>
+              <PieChart
+                margin={{
+                  right: layout === "vertical" ? 0 : 0,
+                  left: layout === "vertical" ? 0 : 0,
+                }}
+              >
                 <Pie
                   data={data}
                   cx={layout === "vertical" ? "50%" : "50%"}
@@ -171,10 +184,7 @@ export const PieBreakdownCard = ({
                   labelLine={false}
                 >
                   {data.map((item, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={getColorForData(title, item.name, index)}
-                    />
+                    <Cell key={`cell-${index}`} fill={getColorForData(title, item.name, index)} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -193,11 +203,11 @@ export const PieBreakdownCard = ({
                   verticalAlign={layout === "vertical" ? "middle" : "bottom"}
                   iconType="circle"
                   iconSize={7}
-                  wrapperStyle={{ 
+                  wrapperStyle={{
                     fontSize: "11px",
                     lineHeight: "1.6",
                     paddingTop: layout === "horizontal" ? "12px" : "0",
-                    paddingLeft: layout === "vertical" ? "15px" : "0"
+                    paddingLeft: layout === "vertical" ? "15px" : "0",
                   }}
                   formatter={(value: string) => {
                     const maxLen = layout === "vertical" ? 15 : 22;
@@ -208,7 +218,10 @@ export const PieBreakdownCard = ({
             </ResponsiveContainer>
           </div>
         ) : (
-          <div style={{ height: `${height - 50}px` }} className="w-full flex items-center justify-center">
+          <div
+            style={{ height: `${height - 50}px` }}
+            className="w-full flex items-center justify-center"
+          >
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
                 <div className="w-8 h-8 rounded-full bg-slate-200"></div>

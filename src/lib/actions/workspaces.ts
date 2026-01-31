@@ -20,6 +20,8 @@ export const createWorkspace = async (formData: FormData) => {
     throw new Error(limitCheck.reason || "Workspace limit reached");
   }
 
+  // Note: No permission check needed for creating workspace - user is creating their own
+
   // Ensure user exists in our DB (sync if needed)
   // In a real app, use webhooks. Here we just upsert for safety on action.
   await db

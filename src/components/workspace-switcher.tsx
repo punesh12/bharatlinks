@@ -123,7 +123,8 @@ export const WorkspaceSwitcher = ({
               setShowNewWorkspaceDialog(false);
               router.refresh();
             } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : "Failed to create workspace";
+              const errorMessage =
+                err instanceof Error ? err.message : "Failed to create workspace";
               setError(errorMessage);
             } finally {
               setIsSubmitting(false);
