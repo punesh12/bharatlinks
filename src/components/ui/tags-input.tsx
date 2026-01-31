@@ -19,6 +19,7 @@ interface TagsInputProps {
   label?: string;
   showManage?: boolean;
   onManageClick?: () => void;
+  maxTags?: number;
 }
 
 // Generate a color for a tag based on its name
@@ -89,6 +90,7 @@ export const TagsInput = ({
   label = "Tags",
   showManage = false,
   onManageClick,
+  maxTags,
 }: TagsInputProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState("");
@@ -99,6 +101,9 @@ export const TagsInput = ({
   const handleAddNewTag = (tagName: string) => {
     const trimmed = tagName.trim().toLowerCase();
     if (trimmed && !value.includes(trimmed)) {
+      if (maxTags !== undefined && value.length >= maxTags) {
+        return; // Don't add if limit reached
+      }
       onChange([...value, trimmed]);
       setNewTagInput(""); // Always clear input after adding
       // Keep input focused for adding more tags
@@ -116,7 +121,13 @@ export const TagsInput = ({
       .filter((tag) => tag && !value.includes(tag));
     
     if (tags.length > 0) {
-      onChange([...value, ...tags]);
+      let tagsToAdd = tags;
+      if (maxTags !== undefined) {
+        const remaining = maxTags - value.length;
+        if (remaining <= 0) return;
+        tagsToAdd = tags.slice(0, remaining);
+      }
+      onChange([...value, ...tagsToAdd]);
       setNewTagInput("");
     }
   };
@@ -128,7 +139,10 @@ export const TagsInput = ({
       // Remove tag if already selected
       onChange(value.filter((tag) => tag !== trimmed));
     } else {
-      // Add tag if not selected
+      // Add tag if not selected (check limit)
+      if (maxTags !== undefined && value.length >= maxTags) {
+        return; // Don't add if limit reached
+      }
       onChange([...value, trimmed]);
     }
   };
@@ -192,11 +206,12 @@ export const TagsInput = ({
   return (
     <div className="space-y-2" ref={containerRef}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium text-slate-900">{label}</Label>
-          <HelpCircle className="h-4 w-4 text-slate-400" />
-        </div>
+      {label && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium text-slate-900">{label}</Label>
+            <HelpCircle className="h-4 w-4 text-slate-400" />
+          </div>
         {showManage && (
           <button
             type="button"
@@ -207,6 +222,7 @@ export const TagsInput = ({
           </button>
         )}
       </div>
+      )}
 
       {/* Selected Tags Display - Clickable to open dropdown */}
       <div

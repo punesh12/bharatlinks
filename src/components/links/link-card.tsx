@@ -144,24 +144,28 @@ export const LinkCard = ({ link }: LinkCardProps) => {
           </div>
 
           {/* Destination URL */}
-          <div className="mb-3">
+          <div className="mb-2">
             <p className="text-xs text-slate-500 truncate font-mono">{domain}</p>
           </div>
 
-          {/* Tags */}
-          {link.tags && link.tags.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {link.tags.map((tag) => (
+          {/* Tags - Show at most 3 tags in a single row */}
+          {/* Always reserve space for tags to maintain consistent spacing */}
+          <div className="mb-3 min-h-[24px] flex gap-1.5 overflow-hidden">
+            {link.tags && link.tags.length > 0 ? (
+              link.tags.slice(0, 3).map((tag) => (
                 <Badge
                   key={tag.id}
                   variant="outline"
-                  className="text-xs px-2 py-0.5 bg-blue-50 border-blue-200 text-blue-700"
+                  className="text-xs px-2 py-0.5 bg-blue-50 border-blue-200 text-blue-700 whitespace-nowrap shrink-0"
                 >
                   {tag.name}
                 </Badge>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              // Empty div to maintain spacing when no tags
+              <div className="h-0" />
+            )}
+          </div>
 
           {/* Footer with metadata */}
           <div className="flex justify-between items-center gap-3 pt-2 border-t border-slate-100 text-xs text-slate-400">

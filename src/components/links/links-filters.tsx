@@ -10,9 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Search, Tag, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface Tag {
   id: string;
@@ -152,31 +158,91 @@ export const LinksFilters = ({ tags = [] }: LinksFiltersProps) => {
           </Select>
         </div>
 
-        {/* Tags Filter - Inline */}
+        {/* Tags Filter - Popover */}
         {tags.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap flex-1 lg:flex-initial min-w-0">
-            <Tag className="h-4 w-4 text-slate-500 flex-shrink-0" />
-            <div className="flex flex-wrap gap-1.5 min-w-0">
-              {tags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
-                return (
-                  <Badge
-                    key={tag.id}
-                    variant={isSelected ? "default" : "outline"}
-                    className={`cursor-pointer transition-all duration-200 text-xs whitespace-nowrap ${
-                      isSelected
-                        ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-sm"
-                        : "bg-white hover:bg-blue-50 hover:border-blue-300 border-slate-300 text-slate-700"
-                    }`}
-                    onClick={() => toggleTag(tag.name)}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="h-3 w-3 ml-1 inline-block" />}
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
+                  selectedTags.length > 0 && "bg-blue-50 border-blue-300 text-blue-700"
+                )}
+              >
+                <Tag className="h-4 w-4 mr-2" />
+                <span className="text-sm">
+                  Tags {selectedTags.length > 0 && `(${selectedTags.length})`}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">Filter by Tags</h3>
+                  {selectedTags.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTags([]);
+                        updateURL({ tags: null });
+                      }}
+                      className="h-7 text-xs text-slate-600 hover:text-slate-900"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+
+                {/* Selected Tags */}
+                {selectedTags.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-600">Selected</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTags.map((tagName) => {
+                        const tag = tags.find((t) => t.name === tagName);
+                        if (!tag) return null;
+                        return (
+                          <Badge
+                            key={tag.id}
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 cursor-pointer text-xs px-2 py-1 flex items-center gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTag(tagName);
+                            }}
+                          >
+                            {tag.name}
+                            <X className="h-3 w-3" />
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Available Tags */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-600">
+                    {selectedTags.length > 0 ? "Available" : "All Tags"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+                    {tags
+                      .filter((tag) => !selectedTags.includes(tag.name))
+                      .map((tag) => (
+                        <Badge
+                          key={tag.id}
+                          variant="outline"
+                          className="bg-white hover:bg-blue-50 hover:border-blue-300 border-slate-300 text-slate-700 cursor-pointer text-xs px-2 py-1 transition-colors"
+                          onClick={() => toggleTag(tag.name)}
+                        >
+                          {tag.name}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 

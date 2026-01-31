@@ -14,6 +14,11 @@ interface PlanUsageProps {
   workspaceId: string;
 }
 
+/**
+ * Calculate the reset date (first day of next month)
+ * The usage count automatically resets on this date because getMonthlyLinkCount()
+ * filters links by createdAt >= startOfMonth, which changes on the 1st of each month
+ */
 const getResetDate = (): Date => {
   const now = new Date();
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);

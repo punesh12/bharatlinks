@@ -13,16 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createLink, getAllTags } from "@/lib/actions/links";
 import { QRCodeCanvas } from "qrcode.react";
-import { Download, Copy, Check, QrCode, IndianRupee, Link as LinkIcon } from "lucide-react";
+import { Download, Copy, Check, QrCode, IndianRupee, Link as LinkIcon, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Share2 } from "lucide-react";
@@ -32,6 +25,7 @@ import { TagsInput } from "@/components/ui/tags-input";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { getUserPlan, getRemainingLinks } from "@/lib/utils/plans";
 import { type PlanTier } from "@/lib/plans";
+import { UtmModal } from "@/components/utm-modal";
 
 type UtmTemplate = {
   id: string;
@@ -52,6 +46,9 @@ export const CreateLinkModal = ({
   const [source, setSource] = React.useState("");
   const [medium, setMedium] = React.useState("");
   const [campaign, setCampaign] = React.useState("");
+  const [term, setTerm] = React.useState("");
+  const [content, setContent] = React.useState("");
+  const [referral, setReferral] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successData, setSuccessData] = React.useState<{
     shortCode: string;
@@ -76,6 +73,7 @@ export const CreateLinkModal = ({
     used: number;
     limit: number | null;
   } | null>(null);
+  const [utmModalOpen, setUtmModalOpen] = React.useState(false);
 
   // Fetch available tags and plan info when modal opens
   React.useEffect(() => {
@@ -89,14 +87,6 @@ export const CreateLinkModal = ({
     }
   }, [open, workspaceId]);
 
-  const handleTemplateChange = (templateId: string) => {
-    const t = templates.find((x) => x.id === templateId);
-    if (t) {
-      setSource(t.source || "");
-      setMedium(t.medium || "");
-      setCampaign(t.campaign || "");
-    }
-  };
 
   const handleCopy = async () => {
     if (!successData) return;
@@ -125,6 +115,9 @@ export const CreateLinkModal = ({
     setSource("");
     setMedium("");
     setCampaign("");
+    setTerm("");
+    setContent("");
+    setReferral("");
     setCopied(false);
     setTags([]);
     setTitle("");
@@ -180,13 +173,43 @@ export const CreateLinkModal = ({
   };
 
   const handleUrlChange = (value: string) => {
-    setLongUrl(value);
+    // Store the base URL without UTM parameters
+    const baseUrl = value.split("?")[0];
+    setLongUrl(baseUrl);
     if (value.trim()) {
       const error = validateUrl(value);
       setUrlError(error);
     } else {
       setUrlError(null);
     }
+  };
+
+  // Function to build URL with UTM parameters
+  const buildUrlWithUtm = (baseUrl: string): string => {
+    if (!baseUrl || !baseUrl.trim()) return baseUrl;
+    
+    const params: string[] = [];
+    if (source) params.push(`utm_source=${encodeURIComponent(source).replace(/%20/g, "+")}`);
+    if (medium) params.push(`utm_medium=${encodeURIComponent(medium).replace(/%20/g, "+")}`);
+    if (campaign) params.push(`utm_campaign=${encodeURIComponent(campaign).replace(/%20/g, "+")}`);
+    if (term) params.push(`utm_term=${encodeURIComponent(term).replace(/%20/g, "+")}`);
+    if (content) params.push(`utm_content=${encodeURIComponent(content).replace(/%20/g, "+")}`);
+    if (referral) params.push(`ref=${encodeURIComponent(referral).replace(/%20/g, "+")}`);
+    
+    if (params.length === 0) return baseUrl;
+    
+    // Remove existing query string if present
+    const urlWithoutParams = baseUrl.split("?")[0];
+    return `${urlWithoutParams}?${params.join("&")}`;
+  };
+
+  // Handle UTM modal close - append UTM params to destination URL
+  const handleUtmModalClose = () => {
+    if (longUrl && linkType === "standard") {
+      const urlWithUtm = buildUrlWithUtm(longUrl);
+      setLongUrl(urlWithUtm);
+    }
+    setUtmModalOpen(false);
   };
 
   return (
@@ -203,20 +226,42 @@ export const CreateLinkModal = ({
         limit={linkLimit?.limit || undefined}
         currentCount={linkLimit?.used}
       />
+      <UtmModal
+        isOpen={utmModalOpen}
+        onClose={handleUtmModalClose}
+        templates={templates}
+        source={source}
+        medium={medium}
+        campaign={campaign}
+        term={term}
+        content={content}
+        referral={referral}
+        longUrl={longUrl}
+        onSourceChange={setSource}
+        onMediumChange={setMedium}
+        onCampaignChange={setCampaign}
+        onTermChange={setTerm}
+        onContentChange={setContent}
+        onReferralChange={setReferral}
+      />
       <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>Create New Link</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
-        <DialogHeader>
-          <DialogTitle>
-            {successData ? "Link Created Successfully!" : "Create Short Link"}
-          </DialogTitle>
-          <DialogDescription>
-            {successData
-              ? "Your new link is ready to share. Scan the QR code or copy the link below."
-              : "Paste your long URL and optionally add tracking parameters."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>
+                {successData ? "Link Created Successfully!" : "Create New Link"}
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                {successData
+                  ? "Your new link is ready to share. Scan the QR code or copy the link below."
+                  : "Create a short link with tracking and custom previews."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         {successData ? (
@@ -261,13 +306,16 @@ export const CreateLinkModal = ({
             action={async (formData) => {
               // Validate URL before submission (for standard links)
               if (linkType === "standard") {
-                const urlValue = formData.get("longUrl") as string;
+                // Use the longUrl state which already has UTM params appended
+                const urlValue = longUrl || (formData.get("longUrl") as string);
                 const error = validateUrl(urlValue);
                 if (error) {
                   setUrlError(error);
                   toast.error(error);
                   return;
                 }
+                // Update formData with the URL that includes UTM params
+                formData.set("longUrl", urlValue);
               }
 
               setIsSubmitting(true);
@@ -304,158 +352,214 @@ export const CreateLinkModal = ({
                 setIsSubmitting(false);
               }
             }}
+            className="flex-1 overflow-hidden flex flex-col"
           >
-            <div className="flex flex-col gap-6 py-4 overflow-y-auto max-h-[60vh] px-1">
-              {/* Type Selection */}
-              <Tabs
-                value={linkType}
-                onValueChange={(v) => setLinkType(v as "standard" | "upi")}
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="standard" className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" />
-                    Standard
-                  </TabsTrigger>
-                  <TabsTrigger value="upi" className="flex items-center gap-2">
-                    <IndianRupee className="h-4 w-4" />
-                    UPI Express
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+            <div className="flex-1 overflow-y-auto px-1">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 py-4">
+                {/* Left Column - Main Form */}
+                <div className="space-y-6">
+                  {/* Type Selection */}
+                  <Tabs
+                    value={linkType}
+                    onValueChange={(v) => setLinkType(v as "standard" | "upi")}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="standard" className="flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4" />
+                        Standard
+                      </TabsTrigger>
+                      <TabsTrigger value="upi" className="flex items-center gap-2">
+                        <IndianRupee className="h-4 w-4" />
+                        UPI Express
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
 
-              <input type="hidden" name="type" value={linkType} />
-              <input type="hidden" name="tags" value={tags.join(", ")} />
+                  <input type="hidden" name="type" value={linkType} />
+                  <input type="hidden" name="tags" value={tags.join(", ")} />
+                  <input type="hidden" name="utm_source" value={source} />
+                  <input type="hidden" name="utm_medium" value={medium} />
+                  <input type="hidden" name="utm_campaign" value={campaign} />
+                  <input type="hidden" name="utm_term" value={term} />
+                  <input type="hidden" name="utm_content" value={content} />
+                  <input type="hidden" name="ref" value={referral} />
 
-              {/* Basics Section */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  {linkType === "standard" ? "Destination" : "Payment Details"}
-                </h4>
+                  {/* Destination URL */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="longUrl" className="text-sm font-medium">
+                        {linkType === "standard" ? "Destination URL" : "Payment Details"}
+                      </Label>
+                      <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
+                    </div>
 
-                {linkType === "standard" ? (
-                  <div className="grid gap-2">
-                    <Label htmlFor="longUrl">Target URL</Label>
-                    <Input
-                      id="longUrl"
-                      name="longUrl"
-                      value={longUrl}
-                      onChange={(e) => handleUrlChange(e.target.value)}
-                      placeholder="https://google.com/very-long-path"
-                      required
-                      className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
-                    />
+                    {linkType === "standard" ? (
+                      <Input
+                        id="longUrl"
+                        name="longUrl"
+                        value={longUrl}
+                        onChange={(e) => handleUrlChange(e.target.value)}
+                        placeholder="https://example.com/very-long-path"
+                        required
+                        className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
+                        title={longUrl.includes("?") ? longUrl : undefined}
+                      />
+                    ) : (
+                      <div className="grid gap-3">
+                        <input
+                          type="hidden"
+                          name="longUrl"
+                          value="https://bharatlinks.in/upi-redirect"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="grid gap-2">
+                            <Label htmlFor="upiVpa" className="text-xs">UPI ID (VPA)</Label>
+                            <Input id="upiVpa" name="upiVpa" placeholder="punesh@okaxis" required />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="upiName" className="text-xs">Merchant Name</Label>
+                            <Input id="upiName" name="upiName" placeholder="Punesh Borkar" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="grid gap-2">
+                            <Label htmlFor="upiAmount" className="text-xs">Amount (Optional)</Label>
+                            <Input id="upiAmount" name="upiAmount" type="number" placeholder="500" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="upiNote" className="text-xs">Payment Note</Label>
+                            <Input id="upiNote" name="upiNote" placeholder="Dinner Bill" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {urlError && (
-                      <p className="text-sm text-red-600 mt-1">{urlError}</p>
+                      <p className="text-sm text-red-600">{urlError}</p>
                     )}
                   </div>
-                ) : (
-                  <div className="grid gap-4">
-                    <input
-                      type="hidden"
-                      name="longUrl"
-                      value="https://bharatlinks.in/upi-redirect"
+
+                  {/* Tags */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-sm font-medium">Tags</Label>
+                      <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                    <TagsInput
+                      value={tags}
+                      onChange={setTags}
+                      availableTags={availableTags}
+                      label=""
+                      maxTags={currentPlan === "free" ? 5 : undefined}
                     />
-                    <div className="grid gap-2">
-                      <Label htmlFor="upiVpa">UPI ID (VPA)</Label>
-                      <Input id="upiVpa" name="upiVpa" placeholder="punesh@okaxis" required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="upiName">Merchant/Name</Label>
-                        <Input id="upiName" name="upiName" placeholder="Punesh Borkar" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="upiAmount">Amount (Optional)</Label>
-                        <Input id="upiAmount" name="upiAmount" type="number" placeholder="500" />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="upiNote">Payment Note</Label>
-                      <Input id="upiNote" name="upiNote" placeholder="Dinner Bill" />
-                    </div>
-                  </div>
-                )}
 
-                <div className="grid gap-2">
-                  <Label htmlFor="shortCode">Custom Alias (Optional)</Label>
-                  <Input id="shortCode" name="shortCode" placeholder="diwali-sale" />
+                  </div>
+
+                  {/* Short Link */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="shortCode" className="text-sm font-medium">Short Link</Label>
+                      <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-l-md text-sm text-slate-600">
+                        {typeof window !== "undefined" ? window.location.hostname : "bharatlinks.in"}
+                      </div>
+                      <Input
+                        id="shortCode"
+                        name="shortCode"
+                        placeholder="diwali-sale"
+                        className="rounded-l-none"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500">Leave empty for auto-generated code</p>
+                  </div>
+
+                  {/* Social Preview Fields */}
+                  {showSocial && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="grid gap-3">
+                        <div className="grid gap-2">
+                          <Label htmlFor="title" className="text-xs">Title</Label>
+                          <Input
+                            id="title"
+                            name="title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Add a title..."
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="description" className="text-xs">Description</Label>
+                          <Input
+                            id="description"
+                            name="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Add a description..."
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="imageUrl" className="text-xs">Image URL</Label>
+                          <Input
+                            id="imageUrl"
+                            name="imageUrl"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
 
-                <TagsInput
-                  value={tags}
-                  onChange={setTags}
-                  availableTags={availableTags}
-                />
-              </div>
-
-              <hr className="border-slate-100" />
-
-              {/* Social Preview Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Share2 className="h-4 w-4 text-slate-400" />
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                      Social Preview
-                    </h4>
-                  </div>
-                  <Switch checked={showSocial} onCheckedChange={setShowSocial} />
-                </div>
-
-                {showSocial && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="title">Social Title</Label>
-                        <Input
-                          id="title"
-                          name="title"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Great Deal on Diwali!"
+                {/* Right Column - Previews */}
+                <div className="hidden lg:block space-y-4 sticky top-0">
+                  {/* QR Code Preview */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-slate-600">QR Code</Label>
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center min-h-[120px]">
+                      {longUrl || linkType === "upi" ? (
+                        <QRCodeCanvas
+                          value={
+                            linkType === "upi"
+                              ? "upi://pay?pa=example@bank&pn=Merchant&am=100&cu=INR"
+                              : longUrl || "https://example.com"
+                          }
+                          size={100}
+                          level="H"
                         />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="description">Social Description</Label>
-                        <Input
-                          id="description"
-                          name="description"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="Get 50% off on all products..."
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="imageUrl">Thumbnail Image URL</Label>
-                        <Input
-                          id="imageUrl"
-                          name="imageUrl"
-                          value={imageUrl}
-                          onChange={(e) => setImageUrl(e.target.value)}
-                          placeholder="https://example.com/image.jpg"
-                        />
-                      </div>
+                      ) : (
+                        <div className="text-center text-slate-400">
+                          <QrCode className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs">Enter a URL to generate QR code</p>
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Live Preview Card */}
-                    <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-tight">
-                        WhatsApp Preview
-                      </p>
-                      <div className="bg-white rounded-lg border shadow-sm overflow-hidden flex flex-col pointer-events-none">
+                  {/* Link Preview */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium text-slate-600">Link Preview</Label>
+                      <Switch checked={showSocial} onCheckedChange={setShowSocial} />
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                         {imageUrl ? (
                           <Image
                             src={imageUrl}
                             alt="Preview"
-                            width={400}
-                            height={128}
-                            className="w-full h-32 object-cover"
+                            width={300}
+                            height={120}
+                            className="w-full h-24 object-cover"
                             unoptimized
                           />
                         ) : (
-                          <div className="w-full h-32 bg-slate-100 flex items-center justify-center">
-                            <QrCode className="h-8 w-8 text-slate-200" />
+                          <div className="w-full h-24 bg-slate-100 flex items-center justify-center">
+                            <QrCode className="h-8 w-8 text-slate-300" />
                           </div>
                         )}
                         <div className="p-3 bg-[#f0f2f5]">
@@ -470,88 +574,34 @@ export const CreateLinkModal = ({
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-
-              <hr className="border-slate-100" />
-
-              {/* UTM Section */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  Tracking (UTMs)
-                </h4>
-                <div className="grid gap-2">
-                  <Label>Template</Label>
-                  <Select onValueChange={handleTemplateChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="grid gap-1.5">
-                    <Label
-                      htmlFor="utm_source"
-                      className="text-[10px] font-bold uppercase text-slate-400"
-                    >
-                      Source
-                    </Label>
-                    <Input
-                      id="utm_source"
-                      name="utm_source"
-                      value={source}
-                      onChange={(e) => setSource(e.target.value)}
-                      placeholder="instagram"
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label
-                      htmlFor="utm_medium"
-                      className="text-[10px] font-bold uppercase text-slate-400"
-                    >
-                      Medium
-                    </Label>
-                    <Input
-                      id="utm_medium"
-                      name="utm_medium"
-                      value={medium}
-                      onChange={(e) => setMedium(e.target.value)}
-                      placeholder="social"
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label
-                      htmlFor="utm_campaign"
-                      className="text-[10px] font-bold uppercase text-slate-400"
-                    >
-                      Campaign
-                    </Label>
-                    <Input
-                      id="utm_campaign"
-                      name="utm_campaign"
-                      value={campaign}
-                      onChange={(e) => setCampaign(e.target.value)}
-                      placeholder="sale"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
-            <DialogFooter className="mt-6">
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Creating..." : "Generate Smart Link"}
-              </Button>
+            <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
+              <div className="flex items-center gap-2 w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setUtmModalOpen(true)}
+                  disabled={linkType !== "standard" || !longUrl || !!urlError}
+                  className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Share2 className="h-4 w-4" />
+                  UTM
+                  {(source || medium || campaign || term || content || referral) && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                      {(source ? 1 : 0) + (medium ? 1 : 0) + (campaign ? 1 : 0) + (term ? 1 : 0) + (content ? 1 : 0) + (referral ? 1 : 0)}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Creating..." : "Create Link"}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         )}

@@ -48,16 +48,17 @@ const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string
   } = await getAnalyticsData(workspaceId);
 
   return (
-    <div className="space-y-8 w-full max-w-[1600px] mx-auto pb-20 px-4">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Workspace Analytics</h1>
-        <p className="text-muted-foreground">
+    <div className="space-y-6 w-full pb-8">
+      {/* Header */}
+      <div className="flex flex-col gap-1 mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Workspace Analytics</h1>
+        <p className="text-sm text-slate-600">
           Deep dive into your link performance and global audience.
         </p>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="Total Clicks"
           value={stats?.totalClicks || 0}
@@ -74,63 +75,80 @@ const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string
       </div>
 
       {/* Main Trend & Device Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <ClickTrendChart data={trendData} />
         <DeviceBreakdown
           data={deviceData.length > 0 ? deviceData : [{ name: "No data", value: 1 }]}
         />
       </div>
 
-      {/* Geographic Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-4">
+      {/* Geographic Row - Continents, Countries, Cities */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <ContinentBreakdown
           data={continentData.length > 0 ? continentData : [{ name: "No data", value: 1 }]}
         />
         <CountryBreakdown
           data={countryData.length > 0 ? countryData : [{ name: "No data", value: 1 }]}
         />
+        <CityList data={cityData} />
       </div>
 
-      {/* Tech Breakdown Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-4">
+      {/* Tech Breakdown Row - Browser, OS, Referrers */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <BrowserBreakdown
           data={browserData.length > 0 ? browserData : [{ name: "No data", value: 1 }]}
         />
         <OSBreakdown data={osData.length > 0 ? osData : [{ name: "No data", value: 1 }]} />
-      </div>
-
-      {/* Referral & City Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <ReferrerList data={referrerData} />
-        <CityList data={cityData} />
       </div>
 
       {/* Top Links */}
       <Card className="border-slate-200 shadow-sm">
-        <CardHeader>
-          <CardTitle>Top Performing Links</CardTitle>
-          <CardDescription>Targeted content performance</CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Top Performing Links</CardTitle>
+          <CardDescription className="text-xs">Targeted content performance</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {topLinks.map((link) => (
-              <div key={link.id} className="flex items-center justify-between group">
-                <div className="space-y-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                    /{link.shortCode}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">{link.longUrl}</p>
+          <div className="space-y-3">
+            {topLinks.length > 0 ? (
+              topLinks.map((link, index) => (
+                <div
+                  key={link.id}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-200"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-md bg-slate-100 text-slate-600 text-xs font-semibold shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                        /{link.shortCode}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">{link.longUrl}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <span className="text-base font-bold text-slate-900">{link.clickCount}</span>
+                      <span className="text-xs text-slate-500 ml-1">clicks</span>
+                    </div>
+                    <Link href={`/app/${workspaceId}/links`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-bold text-slate-900">{link.clickCount} clicks</span>
-                  <Link href={`/app/${workspaceId}/links`}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">
-                      <LinkIcon className="h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-500">No link data available yet.</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
