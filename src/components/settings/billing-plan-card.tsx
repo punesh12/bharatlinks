@@ -40,9 +40,8 @@ export function BillingPlanCard({
 }: BillingPlanCardProps) {
   const monthlyPrice = plan.price.monthly;
   const yearlyPrice = plan.price.yearly;
-  const pricePerMonth = billingPeriod === "yearly" && yearlyPrice > 0 
-    ? Math.round(yearlyPrice / 12) 
-    : monthlyPrice;
+  const pricePerMonth =
+    billingPeriod === "yearly" && yearlyPrice > 0 ? Math.round(yearlyPrice / 12) : monthlyPrice;
   return (
     <Card
       className={cn(
@@ -54,9 +53,7 @@ export function BillingPlanCard({
     >
       {isRecommended && !isCurrentPlan && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge className="bg-yellow-500 text-white text-xs px-3 py-0.5">
-            Recommended
-          </Badge>
+          <Badge className="bg-yellow-500 text-white text-xs px-3 py-0.5">Recommended</Badge>
         </div>
       )}
       <CardHeader className={cn("pb-4", isRecommended && !isCurrentPlan && "pt-6")}>
@@ -64,12 +61,14 @@ export function BillingPlanCard({
         <div className="flex items-start justify-between gap-3 mb-3 min-h-[48px]">
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             {getPlanIcon(tier) && (
-              <div className={cn(
-                "p-2 rounded-lg shrink-0",
-                tier === "starter" && "bg-yellow-100 text-yellow-600",
-                tier === "pro" && "bg-purple-100 text-purple-600",
-                tier === "organization" && "bg-blue-100 text-blue-600"
-              )}>
+              <div
+                className={cn(
+                  "p-2 rounded-lg shrink-0",
+                  tier === "starter" && "bg-yellow-100 text-yellow-600",
+                  tier === "pro" && "bg-purple-100 text-purple-600",
+                  tier === "organization" && "bg-blue-100 text-blue-600"
+                )}
+              >
                 {getPlanIcon(tier)}
               </div>
             )}
@@ -85,13 +84,11 @@ export function BillingPlanCard({
             </Badge>
           )}
         </div>
-        
+
         {/* Pricing */}
         <div className="space-y-1.5">
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-slate-900">
-              ₹{pricePerMonth}
-            </span>
+            <span className="text-3xl font-bold text-slate-900">₹{pricePerMonth}</span>
             <span className="text-sm text-muted-foreground">/month</span>
           </div>
           {billingPeriod === "yearly" && yearlyPrice > 0 && (
@@ -100,7 +97,10 @@ export function BillingPlanCard({
                 <CardDescription className="text-xs line-through text-slate-400">
                   ₹{monthlyPrice}/month
                 </CardDescription>
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-green-50 text-green-700 border-green-200"
+                >
                   Save 16%
                 </Badge>
               </div>
@@ -116,7 +116,7 @@ export function BillingPlanCard({
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col pt-0">
         {/* Features List */}
         <div className="flex-1 mb-4">
@@ -129,7 +129,7 @@ export function BillingPlanCard({
             ))}
           </ul>
         </div>
-        
+
         {/* Action Button - Aligned at bottom */}
         <div className="mt-auto pt-4 border-t border-slate-100">
           {!isCurrentPlan && (

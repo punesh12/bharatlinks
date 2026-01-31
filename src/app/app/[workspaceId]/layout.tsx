@@ -9,6 +9,11 @@ import Link from "next/link";
 import { PlanBadge } from "@/components/plan-badge";
 import { PlanUsage } from "@/components/plan-usage";
 import { getUserPlan } from "@/lib/utils/plans";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { workspaceMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 const DashboardLayout = async ({
   children,
@@ -18,6 +23,29 @@ const DashboardLayout = async ({
   params: Promise<{ workspaceId: string }>;
 }) => {
   const { workspaceId } = await params;
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  // Check if user is a member of the workspace
+  const [member] = await db
+    .select()
+    .from(workspaceMembers)
+    .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+    .limit(1);
+
+  if (!member) {
+    // User is not a member, redirect to first available workspace or create one
+    const workspaces = await getWorkspaces();
+    if (workspaces.length > 0) {
+      redirect(`/app/${workspaces[0].id}`);
+    } else {
+      redirect("/app");
+    }
+  }
+
   const workspaces = await getWorkspaces();
   const userPlan = await getUserPlan();
 
@@ -32,12 +60,12 @@ const DashboardLayout = async ({
               <span>BharatLinks</span>
             </Link>
           </div>
-          
+
           {/* Workspace Switcher */}
           <div className="border-b px-3 py-3">
             <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={workspaceId} />
           </div>
-          
+
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-2">
             <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
@@ -45,7 +73,7 @@ const DashboardLayout = async ({
             <NavLink href={`/app/${workspaceId}/analytics`} icon="analytics" label="Analytics" />
             <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
           </nav>
-          
+
           {/* Plan Usage */}
           <div className="border-t p-4">
             <PlanUsage workspaceId={workspaceId} />
@@ -70,12 +98,12 @@ const DashboardLayout = async ({
                     <span>BharatLinks</span>
                   </Link>
                 </div>
-                
+
                 {/* Workspace Switcher */}
                 <div className="border-b px-3 py-3">
                   <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={workspaceId} />
                 </div>
-                
+
                 {/* Navigation */}
                 <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
                   <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
@@ -87,7 +115,7 @@ const DashboardLayout = async ({
                   />
                   <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
                 </nav>
-                
+
                 {/* Plan Usage */}
                 <div className="border-t p-4">
                   <PlanUsage workspaceId={workspaceId} />

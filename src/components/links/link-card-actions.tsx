@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Copy, Check, ExternalLink, QrCode, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,10 +29,12 @@ export const LinkCardActions = ({ link }: LinkCardActionsProps) => {
   const [qrOpen, setQrOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  const fullShortUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/${link.shortCode}`
-      : `/${link.shortCode}`;
+  const fullShortUrl = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/${link.shortCode}`;
+    }
+    return `/${link.shortCode}`;
+  }, [link.shortCode]);
 
   const handleCopy = async () => {
     try {

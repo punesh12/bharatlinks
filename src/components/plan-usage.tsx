@@ -33,22 +33,30 @@ export const PlanUsage = ({ workspaceId }: PlanUsageProps) => {
     limit: number | null;
   } | null>(null);
   const [usageModalOpen, setUsageModalOpen] = React.useState(false);
+  const [resetDate, setResetDate] = React.useState<Date | null>(null);
 
   React.useEffect(() => {
-    getUserPlan().then(setCurrentPlan).catch(() => setCurrentPlan("free"));
+    getUserPlan()
+      .then(setCurrentPlan)
+      .catch(() => setCurrentPlan("free"));
     getRemainingLinks(workspaceId)
       .then(setLinkLimit)
       .catch(() => setLinkLimit(null));
+    // Calculate reset date on client side only to avoid hydration mismatch
+    setResetDate(getResetDate());
   }, [workspaceId]);
 
   if (!linkLimit || linkLimit.limit === null) {
     return null; // Don't show for unlimited plans
   }
-
-  const resetDate = getResetDate();
   const upgradeSuggestionTier = getUpgradeSuggestion(currentPlan, "links");
   const upgradeSuggestion = upgradeSuggestionTier ? PLANS[upgradeSuggestionTier] : null;
-  const showUpgrade = currentPlan === "free" || linkLimit.remaining === 0 || (linkLimit.remaining !== null && linkLimit.limit !== null && linkLimit.remaining / linkLimit.limit < 0.2);
+  const showUpgrade =
+    currentPlan === "free" ||
+    linkLimit.remaining === 0 ||
+    (linkLimit.remaining !== null &&
+      linkLimit.limit !== null &&
+      linkLimit.remaining / linkLimit.limit < 0.2);
   const billingUrl = `/app/${workspaceId}/settings/billing`;
   const planConfig = PLANS[currentPlan];
 
@@ -117,9 +125,11 @@ export const PlanUsage = ({ workspaceId }: PlanUsageProps) => {
         </div>
 
         {/* Reset Date */}
-        <p className="text-xs text-slate-500">
-          Resets {format(resetDate, "MMM d, yyyy")}
-        </p>
+        {resetDate && (
+          <p className="text-xs text-slate-500" suppressHydrationWarning>
+            Resets {format(resetDate, "MMM d, yyyy")}
+          </p>
+        )}
 
         {/* Upgrade Button */}
         {showUpgrade && (

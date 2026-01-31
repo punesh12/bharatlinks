@@ -1,13 +1,26 @@
 "use server";
 
 import { db } from "@/db";
-import { links, geoRules, analytics } from "@/db/schema";
-import { currentUser } from "@clerk/nextjs/server";
+import { links, geoRules, analytics, activityLogs, workspaceMembers } from "@/db/schema";
+import { currentUser, auth } from "@clerk/nextjs/server";
 import { eq, desc, asc, count, and, or, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { UAParser } from "ua-parser-js";
 import { canCreateLink } from "@/lib/utils/plans";
+
+/**
+ * Check if user is a member of a workspace
+ */
+const isWorkspaceMember = async (workspaceId: string, userId: string): Promise<boolean> => {
+  const [member] = await db
+    .select()
+    .from(workspaceMembers)
+    .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+    .limit(1);
+
+  return !!member;
+};
 
 /**
  * Validates and normalizes a URL
@@ -51,7 +64,7 @@ const validateAndNormalizeUrl = (url: string): string => {
         throw new Error("Invalid domain format");
       }
       return urlObj.toString();
-    } catch  {
+    } catch {
       throw new Error(
         `Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)`
       );
@@ -66,6 +79,11 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
   if (!workspaceId) {
     console.error("Error: workspaceId is missing in createLink");
     throw new Error("Workspace ID is required");
+  }
+
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, user.id))) {
+    throw new Error("You don't have access to this workspace");
   }
 
   // Check plan limits
@@ -92,7 +110,7 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
   // Validate and normalize URL (skip for UPI links as they use placeholder URL)
   let normalizedUrl: string;
   let finalUrl: string;
-  
+
   if (type === "upi") {
     // For UPI links, use the placeholder URL as-is
     finalUrl = longUrl || "https://bharatlinks.in/upi-redirect";
@@ -139,20 +157,36 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
         .join(",")
     : null;
 
-  await db.insert(links).values({
-    workspaceId,
-    longUrl: finalUrl,
-    shortCode,
-    title,
-    description,
-    imageUrl,
-    tags: tagsString,
-    type,
-    upiVpa,
-    upiName,
-    upiAmount,
-    upiNote,
-  });
+  const [newLink] = await db
+    .insert(links)
+    .values({
+      workspaceId,
+      longUrl: finalUrl,
+      shortCode,
+      title,
+      description,
+      imageUrl,
+      tags: tagsString,
+      type,
+      upiVpa,
+      upiName,
+      upiAmount,
+      upiNote,
+    })
+    .returning();
+
+  // Log activity
+  const { userId } = await auth();
+  if (userId && newLink) {
+    await db.insert(activityLogs).values({
+      workspaceId,
+      userId,
+      action: "link.created",
+      entityType: "link",
+      entityId: newLink.id,
+      metadata: JSON.stringify({ shortCode, type }),
+    });
+  }
 
   revalidatePath(`/app/${workspaceId}`);
   revalidatePath(`/app/${workspaceId}/links`);
@@ -163,6 +197,22 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
 export const updateLink = async (linkId: string, workspaceId: string, formData: FormData) => {
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
+
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, user.id))) {
+    throw new Error("You don't have access to this workspace");
+  }
+
+  // Verify the link belongs to this workspace
+  const [link] = await db
+    .select({ workspaceId: links.workspaceId })
+    .from(links)
+    .where(eq(links.id, linkId))
+    .limit(1);
+
+  if (!link || link.workspaceId !== workspaceId) {
+    throw new Error("Link not found or access denied");
+  }
 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
@@ -185,10 +235,24 @@ export const updateLink = async (linkId: string, workspaceId: string, formData: 
     throw new Error(error instanceof Error ? error.message : "Invalid URL");
   }
 
-  await db
+  const [updatedLink] = await db
     .update(links)
     .set({ title, description, imageUrl, longUrl: normalizedUrl, tags: tagsString })
-    .where(eq(links.id, linkId));
+    .where(eq(links.id, linkId))
+    .returning();
+
+  // Log activity
+  const { userId } = await auth();
+  if (userId && updatedLink) {
+    await db.insert(activityLogs).values({
+      workspaceId,
+      userId,
+      action: "link.updated",
+      entityType: "link",
+      entityId: linkId,
+      metadata: JSON.stringify({ shortCode: updatedLink.shortCode }),
+    });
+  }
 
   revalidatePath(`/app/${workspaceId}`);
   revalidatePath(`/app/${workspaceId}/links`);
@@ -200,11 +264,47 @@ export const deleteLink = async (linkId: string, workspaceId: string) => {
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
 
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, user.id))) {
+    throw new Error("You don't have access to this workspace");
+  }
+
+  // Verify the link belongs to this workspace
+  const [link] = await db
+    .select({ workspaceId: links.workspaceId })
+    .from(links)
+    .where(eq(links.id, linkId))
+    .limit(1);
+
+  if (!link || link.workspaceId !== workspaceId) {
+    throw new Error("Link not found or access denied");
+  }
+
+  // Get link info before deletion for logging
+  const [linkToDelete] = await db
+    .select({ shortCode: links.shortCode })
+    .from(links)
+    .where(eq(links.id, linkId))
+    .limit(1);
+
   // Delete geo rules first (if any)
   await db.delete(geoRules).where(eq(geoRules.linkId, linkId));
 
   // Delete the link
   await db.delete(links).where(eq(links.id, linkId));
+
+  // Log activity
+  const { userId } = await auth();
+  if (userId && linkToDelete) {
+    await db.insert(activityLogs).values({
+      workspaceId,
+      userId,
+      action: "link.deleted",
+      entityType: "link",
+      entityId: linkId,
+      metadata: JSON.stringify({ shortCode: linkToDelete.shortCode }),
+    });
+  }
 
   revalidatePath(`/app/${workspaceId}`);
   revalidatePath(`/app/${workspaceId}/links`);
@@ -221,6 +321,22 @@ export const addGeoRule = async (
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
 
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, user.id))) {
+    throw new Error("You don't have access to this workspace");
+  }
+
+  // Verify the link belongs to this workspace
+  const [link] = await db
+    .select({ workspaceId: links.workspaceId })
+    .from(links)
+    .where(eq(links.id, linkId))
+    .limit(1);
+
+  if (!link || link.workspaceId !== workspaceId) {
+    throw new Error("Link not found or access denied");
+  }
+
   await db.insert(geoRules).values({
     linkId,
     stateName,
@@ -235,13 +351,56 @@ export const deleteGeoRule = async (ruleId: string, workspaceId: string) => {
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
 
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, user.id))) {
+    throw new Error("You don't have access to this workspace");
+  }
+
+  // Verify the geo rule's link belongs to this workspace
+  const [geoRule] = await db
+    .select({ linkId: geoRules.linkId })
+    .from(geoRules)
+    .where(eq(geoRules.id, ruleId))
+    .limit(1);
+
+  if (geoRule) {
+    const [link] = await db
+      .select({ workspaceId: links.workspaceId })
+      .from(links)
+      .where(eq(links.id, geoRule.linkId))
+      .limit(1);
+
+    if (!link || link.workspaceId !== workspaceId) {
+      throw new Error("Geo rule not found or access denied");
+    }
+  }
+
   await db.delete(geoRules).where(eq(geoRules.id, ruleId));
 
   revalidatePath(`/app/${workspaceId}/links`);
   return { success: true };
 };
 
-export const getGeoRules = async (linkId: string) => {
+export const getGeoRules = async (linkId: string, workspaceId: string) => {
+  const { userId } = await auth();
+  if (!userId) return [];
+
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, userId))) {
+    return [];
+  }
+
+  // Verify the link belongs to this workspace
+  const [link] = await db
+    .select({ workspaceId: links.workspaceId })
+    .from(links)
+    .where(eq(links.id, linkId))
+    .limit(1);
+
+  if (!link || link.workspaceId !== workspaceId) {
+    return [];
+  }
+
   return await db.select().from(geoRules).where(eq(geoRules.linkId, linkId));
 };
 
@@ -256,6 +415,13 @@ export const getLinks = async (
     tagFilter?: string[]; // Array of tag names to filter by
   }
 ) => {
+  const { userId } = await auth();
+  if (!userId) return { links: [], total: 0, totalPages: 0 };
+
+  // Check if user is a member of the workspace
+  if (!(await isWorkspaceMember(workspaceId, userId))) {
+    return { links: [], total: 0, totalPages: 0 };
+  }
   const offset = (page - 1) * limit;
   const { search, sortBy = "createdAt", sortOrder = "desc" } = options || {};
 

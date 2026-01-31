@@ -102,3 +102,39 @@ export const analytics = pgTable("analytics", {
   userAgent: text("user_agent"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
+
+// Workspace Invitations Table
+export const workspaceInvitations = pgTable("workspace_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .references(() => workspaces.id, { onDelete: "cascade" })
+    .notNull(),
+  email: text("email").notNull(),
+  role: text("role").$type<"owner" | "member">().default("member").notNull(),
+  invitedBy: text("invited_by")
+    .references(() => users.id)
+    .notNull(),
+  token: text("token").unique().notNull(), // Unique token for invitation link
+  status: text("status")
+    .$type<"pending" | "accepted" | "rejected" | "expired">()
+    .default("pending")
+    .notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // Invitations expire after 7 days
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Activity Logs Table
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .references(() => workspaces.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id")
+    .references(() => users.id)
+    .notNull(),
+  action: text("action").notNull(), // e.g., "link.created", "link.updated", "link.deleted", "member.invited", "member.removed", "role.changed"
+  entityType: text("entity_type").notNull(), // e.g., "link", "member", "workspace"
+  entityId: text("entity_id"), // ID of the affected entity (link ID, member user ID, etc.)
+  metadata: text("metadata"), // JSON string with additional details
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

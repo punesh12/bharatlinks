@@ -29,7 +29,9 @@ const BillingPage = () => {
   const [billingPeriod, setBillingPeriod] = React.useState<"monthly" | "yearly">("monthly");
 
   React.useEffect(() => {
-    getUserPlan().then(setCurrentPlan).catch(() => setCurrentPlan("free"));
+    getUserPlan()
+      .then(setCurrentPlan)
+      .catch(() => setCurrentPlan("free"));
     getRemainingLinks(workspaceId)
       .then(setLinkUsage)
       .catch(() => setLinkUsage(null));
@@ -74,8 +76,10 @@ const BillingPage = () => {
         </div>
 
         {/* Current Plan - Shortened */}
-        <Card className="
-         gap-2">
+        <Card
+          className="
+         gap-2"
+        >
           <CardHeader className="">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between ">
               <div className="flex items-center ">
@@ -174,14 +178,14 @@ const BillingPage = () => {
                   className="w-auto"
                 >
                   <TabsList className="inline-flex h-10 bg-slate-100 p-1 rounded-lg w-auto">
-                    <TabsTrigger 
-                      value="monthly" 
+                    <TabsTrigger
+                      value="monthly"
                       className="text-sm font-medium rounded-md px-4 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[state=inactive]:text-slate-500 data-[state=inactive]:bg-transparent data-[state=inactive]:hover:text-slate-700"
                     >
                       Monthly
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="yearly" 
+                    <TabsTrigger
+                      value="yearly"
                       className="text-sm font-medium rounded-md px-4 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[state=inactive]:text-slate-500 data-[state=inactive]:bg-transparent data-[state=inactive]:hover:text-slate-700"
                     >
                       Yearly (Save 16%)
@@ -264,7 +268,9 @@ const BillingPage = () => {
                   </svg>
                 </div>
                 <p className="text-sm font-medium text-slate-900 mb-1">No billing history</p>
-                <p className="text-xs text-slate-500">Your invoices will appear here once you make your first payment.</p>
+                <p className="text-xs text-slate-500">
+                  Your invoices will appear here once you make your first payment.
+                </p>
               </div>
             </CardContent>
           </Card>

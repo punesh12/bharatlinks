@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, CreditCard } from "lucide-react";
+import { Settings, CreditCard, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
   settings: Settings,
   creditCard: CreditCard,
+  users: Users,
 };
 
 interface SettingsNavLinkProps {
@@ -19,7 +20,7 @@ interface SettingsNavLinkProps {
 
 export function SettingsNavLink({ href, icon, label, exact = false }: SettingsNavLinkProps) {
   const pathname = usePathname();
-  
+
   // Improved active state detection
   let isActive = false;
   if (exact) {
@@ -30,9 +31,10 @@ export function SettingsNavLink({ href, icon, label, exact = false }: SettingsNa
     // For non-exact matches (like Billing), match exact or sub-paths
     // Match if pathname equals href OR pathname starts with href + "/"
     // This ensures /settings/billing/something also highlights billing
-    isActive = pathname === href || (pathname.startsWith(href + "/") && pathname.length > href.length);
+    isActive =
+      pathname === href || (pathname.startsWith(href + "/") && pathname.length > href.length);
   }
-  
+
   const Icon = iconMap[icon];
 
   return (
@@ -41,9 +43,7 @@ export function SettingsNavLink({ href, icon, label, exact = false }: SettingsNa
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all whitespace-nowrap relative group",
         "hover:bg-slate-50 hover:text-slate-900",
-        isActive
-          ? "bg-blue-50 text-blue-900 font-semibold"
-          : "text-slate-600"
+        isActive ? "bg-blue-50 text-blue-900 font-semibold" : "text-slate-600"
       )}
     >
       {/* Active indicator */}

@@ -119,7 +119,7 @@ export const TagsInput = ({
       .split(",")
       .map((tag) => tag.trim().toLowerCase())
       .filter((tag) => tag && !value.includes(tag));
-    
+
     if (tags.length > 0) {
       let tagsToAdd = tags;
       if (maxTags !== undefined) {
@@ -189,10 +189,7 @@ export const TagsInput = ({
   // Handle clicking outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -212,16 +209,16 @@ export const TagsInput = ({
             <Label className="text-sm font-medium text-slate-900">{label}</Label>
             <HelpCircle className="h-4 w-4 text-slate-400" />
           </div>
-        {showManage && (
-          <button
-            type="button"
-            onClick={onManageClick}
-            className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            Manage
-          </button>
-        )}
-      </div>
+          {showManage && (
+            <button
+              type="button"
+              onClick={onManageClick}
+              className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Manage
+            </button>
+          )}
+        </div>
       )}
 
       {/* Selected Tags Display - Clickable to open dropdown */}
@@ -233,9 +230,7 @@ export const TagsInput = ({
         }}
         className={cn(
           "min-h-[44px] px-3 py-2 border border-slate-300 rounded-lg bg-white flex items-start gap-2 flex-wrap transition-colors",
-          value.length > 0
-            ? "cursor-pointer hover:border-slate-400"
-            : "cursor-text"
+          value.length > 0 ? "cursor-pointer hover:border-slate-400" : "cursor-text"
         )}
       >
         {value.length === 0 ? (
@@ -333,44 +328,40 @@ export const TagsInput = ({
             )}
 
           {/* Show available tags */}
-          {availableTags.length > 0 ? (
-            availableTags.map((tag) => {
-              const isSelected = value.includes(tag.name.toLowerCase());
-              const colors = getTagColor(tag.name);
-              return (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleToggleTag(tag.name)}
-                  className={cn(
-                    "w-full px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-b-0",
-                    isSelected && "bg-slate-50"
-                  )}
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div
-                      className={cn(
-                        "h-4 w-4 border rounded flex items-center justify-center flex-shrink-0",
-                        isSelected
-                          ? "bg-slate-700 border-slate-700"
-                          : "border-slate-300"
-                      )}
-                    >
-                      {isSelected && <Check className="h-3 w-3 text-white" />}
+          {availableTags.length > 0
+            ? availableTags.map((tag) => {
+                const isSelected = value.includes(tag.name.toLowerCase());
+                const colors = getTagColor(tag.name);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleToggleTag(tag.name)}
+                    className={cn(
+                      "w-full px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-b-0",
+                      isSelected && "bg-slate-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div
+                        className={cn(
+                          "h-4 w-4 border rounded flex items-center justify-center flex-shrink-0",
+                          isSelected ? "bg-slate-700 border-slate-700" : "border-slate-300"
+                        )}
+                      >
+                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                      </div>
+                      <Tag className={cn("h-4 w-4 flex-shrink-0", colors.icon)} />
+                      <span className="text-sm text-slate-900">{tag.name}</span>
                     </div>
-                    <Tag className={cn("h-4 w-4 flex-shrink-0", colors.icon)} />
-                    <span className="text-sm text-slate-900">{tag.name}</span>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            !newTagInput.trim() && (
-              <div className="px-3 py-4 text-center text-sm text-slate-500">
-                No tags available. Tags will appear here as you create links.
-              </div>
-            )
-          )}
+                  </button>
+                );
+              })
+            : !newTagInput.trim() && (
+                <div className="px-3 py-4 text-center text-sm text-slate-500">
+                  No tags available. Tags will appear here as you create links.
+                </div>
+              )}
         </div>
       )}
     </div>

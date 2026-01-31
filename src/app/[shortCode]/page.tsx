@@ -7,7 +7,6 @@ import { headers } from "next/headers";
 import { trackLinkClick } from "@/lib/actions/links";
 import { UpiRedirect } from "@/components/upi-redirect";
 
-
 export const generateMetadata = async ({
   params,
 }: {
@@ -70,14 +69,10 @@ export const generateMetadata = async ({
   }
 };
 
-const RedirectPage = async ({
-  params,
-}: {
-  params: Promise<{ shortCode: string }>;
-}) => {
+const RedirectPage = async ({ params }: { params: Promise<{ shortCode: string }> }) => {
   const { shortCode } = await params;
   const headersList = await headers();
-  
+
   // Explicitly select all fields including UPI fields
   const [link] = await db
     .select({
@@ -108,28 +103,28 @@ const RedirectPage = async ({
   if (link.type === "upi" && link.upiVpa) {
     // Construct UPI payment URL in the format: upi://pay?pa=VPA&pn=Name&am=Amount&cu=INR
     const params: string[] = [];
-    
+
     // pa (Payment Address/VPA) - required
     params.push(`pa=${encodeURIComponent(link.upiVpa)}`);
-    
+
     // pn (Payee Name) - optional
     if (link.upiName && link.upiName.trim()) {
       params.push(`pn=${encodeURIComponent(link.upiName.trim())}`);
     }
-    
+
     // am (Amount) - optional
     if (link.upiAmount && link.upiAmount.trim()) {
       params.push(`am=${encodeURIComponent(link.upiAmount.trim())}`);
     }
-    
+
     // cu (Currency) - always INR
     params.push("cu=INR");
-    
+
     // tn (Transaction Note) - optional
     if (link.upiNote && link.upiNote.trim()) {
       params.push(`tn=${encodeURIComponent(link.upiNote.trim())}`);
     }
-    
+
     const upiUrl = `upi://pay?${params.join("&")}`;
 
     // Get request information for analytics

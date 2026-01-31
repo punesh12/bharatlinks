@@ -36,7 +36,7 @@ export function PricingSection() {
           <p className="mt-4 text-lg text-slate-600">
             Start free, upgrade as you grow. No hidden fees.
           </p>
-          
+
           {/* Billing Period Toggle */}
           <div className="flex items-center justify-center mt-6">
             <Tabs
@@ -45,14 +45,14 @@ export function PricingSection() {
               className="w-auto"
             >
               <TabsList className="inline-flex h-10 bg-slate-100 p-1 rounded-lg w-auto">
-                <TabsTrigger 
-                  value="monthly" 
+                <TabsTrigger
+                  value="monthly"
                   className="text-sm font-medium rounded-md px-4 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[state=inactive]:text-slate-500 data-[state=inactive]:bg-transparent data-[state=inactive]:hover:text-slate-700"
                 >
                   Monthly
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="yearly" 
+                <TabsTrigger
+                  value="yearly"
                   className="text-sm font-medium rounded-md px-4 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[state=inactive]:text-slate-500 data-[state=inactive]:bg-transparent data-[state=inactive]:hover:text-slate-700"
                 >
                   Yearly (Save 16%)
@@ -67,9 +67,10 @@ export function PricingSection() {
             const plan = PLANS[tier];
             const monthlyPrice = plan.price.monthly;
             const yearlyPrice = plan.price.yearly;
-            const pricePerMonth = billingPeriod === "yearly" && yearlyPrice > 0 
-              ? Math.round(yearlyPrice / 12) 
-              : monthlyPrice;
+            const pricePerMonth =
+              billingPeriod === "yearly" && yearlyPrice > 0
+                ? Math.round(yearlyPrice / 12)
+                : monthlyPrice;
             const isRecommended = tier === "starter";
 
             return (
@@ -91,11 +92,13 @@ export function PricingSection() {
                   {/* Plan Title and Icon */}
                   <div className="flex items-center gap-2.5 mb-3">
                     {getPlanIcon(tier) && (
-                      <div className={cn(
-                        "p-2 rounded-lg",
-                        tier === "starter" && "bg-yellow-100 text-yellow-600",
-                        tier === "pro" && "bg-purple-100 text-purple-600"
-                      )}>
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          tier === "starter" && "bg-yellow-100 text-yellow-600",
+                          tier === "pro" && "bg-purple-100 text-purple-600"
+                        )}
+                      >
                         {getPlanIcon(tier)}
                       </div>
                     )}
@@ -103,13 +106,11 @@ export function PricingSection() {
                       {plan.name}
                     </CardTitle>
                   </div>
-                  
+
                   {/* Pricing */}
                   <div className="space-y-1.5">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-slate-900">
-                        ₹{pricePerMonth}
-                      </span>
+                      <span className="text-4xl font-bold text-slate-900">₹{pricePerMonth}</span>
                       {tier !== "free" && (
                         <span className="text-sm text-muted-foreground">/month</span>
                       )}
@@ -120,23 +121,22 @@ export function PricingSection() {
                           <span className="text-xs line-through text-slate-400">
                             ₹{monthlyPrice}/month
                           </span>
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-green-50 text-green-700 border-green-200"
+                          >
                             Save 16%
                           </Badge>
                         </div>
-                        <p className="text-xs text-slate-600">
-                          Billed ₹{yearlyPrice} annually
-                        </p>
+                        <p className="text-xs text-slate-600">Billed ₹{yearlyPrice} annually</p>
                       </>
                     )}
                     {billingPeriod === "monthly" && yearlyPrice > 0 && (
-                      <p className="text-xs text-slate-600">
-                        or ₹{yearlyPrice}/year (save 16%)
-                      </p>
+                      <p className="text-xs text-slate-600">or ₹{yearlyPrice}/year (save 16%)</p>
                     )}
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="flex-1 flex flex-col pt-0">
                   {/* Features List */}
                   <div className="flex-1 mb-6">
@@ -149,7 +149,7 @@ export function PricingSection() {
                       ))}
                     </ul>
                   </div>
-                  
+
                   {/* CTA Button */}
                   <div className="mt-auto pt-4 border-t border-slate-100">
                     <Link href="/sign-up" className="block">

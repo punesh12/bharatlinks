@@ -1,4 +1,9 @@
 import { SettingsNavLink } from "@/components/settings/settings-nav-link";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { workspaceMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -13,6 +18,12 @@ const settingsNavItems = [
     exact: true, // Only match exact path
   },
   {
+    href: (workspaceId: string) => `/app/${workspaceId}/settings/team`,
+    label: "Team",
+    icon: "users",
+    exact: false, // Match path and sub-paths
+  },
+  {
     href: (workspaceId: string) => `/app/${workspaceId}/settings/billing`,
     label: "Billing",
     icon: "creditCard",
@@ -20,11 +31,24 @@ const settingsNavItems = [
   },
 ];
 
-export default async function SettingsLayout({
-  children,
-  params,
-}: SettingsLayoutProps) {
+export default async function SettingsLayout({ children, params }: SettingsLayoutProps) {
   const { workspaceId } = await params;
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  // Check if user is a member of the workspace
+  const [member] = await db
+    .select()
+    .from(workspaceMembers)
+    .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+    .limit(1);
+
+  if (!member) {
+    redirect("/app");
+  }
 
   return (
     <div className="flex flex-col md:flex-row gap-4">

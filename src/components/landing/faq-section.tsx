@@ -91,9 +91,7 @@ export function FAQSection() {
                 onClick={() => toggleFAQ(index)}
                 className="w-full px-6 py-4 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
               >
-                <span className="text-base font-semibold text-slate-900 pr-8">
-                  {faq.question}
-                </span>
+                <span className="text-base font-semibold text-slate-900 pr-8">{faq.question}</span>
                 <ChevronDown
                   className={cn(
                     "h-5 w-5 text-slate-500 shrink-0 transition-transform duration-200",
@@ -116,9 +114,7 @@ export function FAQSection() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-slate-600 mb-4">
-            Still have questions? We're here to help.
-          </p>
+          <p className="text-sm text-slate-600 mb-4">Still have questions? We're here to help.</p>
           <a
             href="mailto:support@bharatlinks.in"
             className="text-blue-600 hover:text-blue-700 font-medium text-sm"
