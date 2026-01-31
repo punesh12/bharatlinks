@@ -8,6 +8,13 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { UAParser } from "ua-parser-js";
 import { canCreateLink } from "@/lib/utils/plans";
+import {
+  invalidateLinkCache,
+  cacheLink,
+  cacheLinkMetadata,
+  type CachedLink,
+  type CachedLinkMetadata,
+} from "@/lib/redis";
 
 /**
  * Check if user is a member of a workspace
@@ -188,6 +195,43 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
     });
   }
 
+  // Cache the new link and metadata (async, don't wait)
+  if (newLink) {
+    const cachedLink: CachedLink = {
+      id: newLink.id,
+      workspaceId: newLink.workspaceId,
+      shortCode: newLink.shortCode,
+      longUrl: finalUrl,
+      clickCount: newLink.clickCount,
+      title: newLink.title,
+      description: newLink.description,
+      imageUrl: newLink.imageUrl,
+      tags: newLink.tags,
+      type: newLink.type,
+      upiVpa: newLink.upiVpa,
+      upiName: newLink.upiName,
+      upiAmount: newLink.upiAmount,
+      upiNote: newLink.upiNote,
+      createdAt: newLink.createdAt instanceof Date ? newLink.createdAt.toISOString() : newLink.createdAt,
+    };
+    
+    const cachedMetadata: CachedLinkMetadata = {
+      title: newLink.title,
+      description: newLink.description,
+      imageUrl: newLink.imageUrl,
+      type: newLink.type,
+      upiVpa: newLink.upiVpa,
+      upiName: newLink.upiName,
+      upiAmount: newLink.upiAmount,
+      upiNote: newLink.upiNote,
+    };
+    
+    Promise.all([
+      cacheLink(cachedLink),
+      cacheLinkMetadata(newLink.shortCode, cachedMetadata),
+    ]).catch((err) => console.error("Failed to cache new link:", err));
+  }
+
   revalidatePath(`/app/${workspaceId}`);
   revalidatePath(`/app/${workspaceId}/links`);
 
@@ -241,6 +285,48 @@ export const updateLink = async (linkId: string, workspaceId: string, formData: 
     .where(eq(links.id, linkId))
     .returning();
 
+  // Invalidate cache for the updated link and re-cache with new data
+  if (updatedLink) {
+    invalidateLinkCache(updatedLink.shortCode).catch((err) =>
+      console.error("Failed to invalidate cache:", err)
+    );
+    
+    // Re-cache the updated link and metadata (async, don't wait)
+    const cachedLink: CachedLink = {
+      id: updatedLink.id,
+      workspaceId: updatedLink.workspaceId,
+      shortCode: updatedLink.shortCode,
+      longUrl: normalizedUrl,
+      clickCount: updatedLink.clickCount,
+      title: updatedLink.title,
+      description: updatedLink.description,
+      imageUrl: updatedLink.imageUrl,
+      tags: updatedLink.tags,
+      type: updatedLink.type,
+      upiVpa: updatedLink.upiVpa,
+      upiName: updatedLink.upiName,
+      upiAmount: updatedLink.upiAmount,
+      upiNote: updatedLink.upiNote,
+      createdAt: updatedLink.createdAt instanceof Date ? updatedLink.createdAt.toISOString() : updatedLink.createdAt,
+    };
+    
+    const cachedMetadata: CachedLinkMetadata = {
+      title: updatedLink.title,
+      description: updatedLink.description,
+      imageUrl: updatedLink.imageUrl,
+      type: updatedLink.type,
+      upiVpa: updatedLink.upiVpa,
+      upiName: updatedLink.upiName,
+      upiAmount: updatedLink.upiAmount,
+      upiNote: updatedLink.upiNote,
+    };
+    
+    Promise.all([
+      cacheLink(cachedLink),
+      cacheLinkMetadata(updatedLink.shortCode, cachedMetadata),
+    ]).catch((err) => console.error("Failed to cache updated link:", err));
+  }
+
   // Log activity
   const { userId } = await auth();
   if (userId && updatedLink) {
@@ -261,55 +347,89 @@ export const updateLink = async (linkId: string, workspaceId: string, formData: 
 };
 
 export const deleteLink = async (linkId: string, workspaceId: string) => {
-  const user = await currentUser();
-  if (!user) throw new Error("Unauthorized");
+  try {
+    const user = await currentUser();
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
 
-  // Check if user is a member of the workspace
-  if (!(await isWorkspaceMember(workspaceId, user.id))) {
-    throw new Error("You don't have access to this workspace");
+    // Check if user is a member of the workspace
+    if (!(await isWorkspaceMember(workspaceId, user.id))) {
+      throw new Error("You don't have access to this workspace");
+    }
+
+    // Verify the link belongs to this workspace
+    const [link] = await db
+      .select({ workspaceId: links.workspaceId })
+      .from(links)
+      .where(eq(links.id, linkId))
+      .limit(1);
+
+    if (!link || link.workspaceId !== workspaceId) {
+      throw new Error("Link not found or access denied");
+    }
+
+    // Get link info before deletion for logging and cache invalidation
+    const [linkToDelete] = await db
+      .select({ shortCode: links.shortCode })
+      .from(links)
+      .where(eq(links.id, linkId))
+      .limit(1);
+
+    if (!linkToDelete) {
+      throw new Error("Link not found");
+    }
+
+    // Delete related data first (analytics, geo rules)
+    try {
+      await db.delete(analytics).where(eq(analytics.linkId, linkId));
+    } catch (error) {
+      // Analytics might not exist, continue with deletion
+      console.warn("Failed to delete analytics (might not exist):", error);
+    }
+
+    try {
+      await db.delete(geoRules).where(eq(geoRules.linkId, linkId));
+    } catch (error) {
+      // Geo rules might not exist, continue with deletion
+      console.warn("Failed to delete geo rules (might not exist):", error);
+    }
+
+    // Delete the link
+    await db.delete(links).where(eq(links.id, linkId));
+
+    // Invalidate cache for the deleted link (don't block on this)
+    invalidateLinkCache(linkToDelete.shortCode).catch((err) =>
+      console.error("Failed to invalidate cache:", err)
+    );
+
+    // Log activity (don't block on this)
+    const { userId } = await auth();
+    if (userId) {
+      try {
+        await db.insert(activityLogs).values({
+          workspaceId,
+          userId,
+          action: "link.deleted",
+          entityType: "link",
+          entityId: linkId,
+          metadata: JSON.stringify({ shortCode: linkToDelete.shortCode }),
+        });
+      } catch (error) {
+        // Silently fail if activity logs table doesn't exist yet
+        console.error("Failed to log activity:", error);
+      }
+    }
+
+    revalidatePath(`/app/${workspaceId}`);
+    revalidatePath(`/app/${workspaceId}/links`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting link:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to delete link";
+    return { success: false, error: errorMessage };
   }
-
-  // Verify the link belongs to this workspace
-  const [link] = await db
-    .select({ workspaceId: links.workspaceId })
-    .from(links)
-    .where(eq(links.id, linkId))
-    .limit(1);
-
-  if (!link || link.workspaceId !== workspaceId) {
-    throw new Error("Link not found or access denied");
-  }
-
-  // Get link info before deletion for logging
-  const [linkToDelete] = await db
-    .select({ shortCode: links.shortCode })
-    .from(links)
-    .where(eq(links.id, linkId))
-    .limit(1);
-
-  // Delete geo rules first (if any)
-  await db.delete(geoRules).where(eq(geoRules.linkId, linkId));
-
-  // Delete the link
-  await db.delete(links).where(eq(links.id, linkId));
-
-  // Log activity
-  const { userId } = await auth();
-  if (userId && linkToDelete) {
-    await db.insert(activityLogs).values({
-      workspaceId,
-      userId,
-      action: "link.deleted",
-      entityType: "link",
-      entityId: linkId,
-      metadata: JSON.stringify({ shortCode: linkToDelete.shortCode }),
-    });
-  }
-
-  revalidatePath(`/app/${workspaceId}`);
-  revalidatePath(`/app/${workspaceId}/links`);
-
-  return { success: true };
 };
 
 export const addGeoRule = async (

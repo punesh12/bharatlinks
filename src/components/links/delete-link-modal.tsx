@@ -35,12 +35,18 @@ export const DeleteLinkModal = ({ isOpen, onClose, link, onDeleted }: DeleteLink
     setIsDeleting(true);
 
     try {
-      await deleteLink(link.id, workspaceId);
-      toast.success("Link deleted successfully!");
-      onDeleted?.();
-      onClose();
-    } catch {
-      toast.error("Failed to delete link");
+      const result = await deleteLink(link.id, workspaceId);
+      if (result.success) {
+        toast.success("Link deleted successfully!");
+        onDeleted?.();
+        onClose();
+      } else {
+        toast.error(result.error || "Failed to delete link");
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete link";
+      console.error("Delete link error:", error);
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }
