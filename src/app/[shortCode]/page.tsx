@@ -6,6 +6,14 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { trackLinkClick } from "@/lib/actions/links";
 import { UpiRedirect } from "@/components/upi-redirect";
+import {
+  getCachedLink,
+  cacheLink,
+  getCachedLinkMetadata,
+  cacheLinkMetadata,
+  type CachedLink,
+  type CachedLinkMetadata,
+} from "@/lib/redis";
 
 export const generateMetadata = async ({
   params,
@@ -14,19 +22,43 @@ export const generateMetadata = async ({
 }): Promise<Metadata> => {
   try {
     const { shortCode } = await params;
-    // Explicitly select title, description, and imageUrl for metadata
-    const [link] = await db
-      .select({
-        title: links.title,
-        description: links.description,
-        imageUrl: links.imageUrl,
-        type: links.type,
-        upiVpa: links.upiVpa,
-        upiName: links.upiName,
-        upiAmount: links.upiAmount,
-      })
-      .from(links)
-      .where(eq(links.shortCode, shortCode));
+    
+    // Try to get metadata from cache first
+    const cachedMetadata = await getCachedLinkMetadata(shortCode);
+    let link: CachedLinkMetadata | null = cachedMetadata;
+
+    // If not in cache, fetch from database
+    if (!link) {
+      const [dbLink] = await db
+        .select({
+          title: links.title,
+          description: links.description,
+          imageUrl: links.imageUrl,
+          type: links.type,
+          upiVpa: links.upiVpa,
+          upiName: links.upiName,
+          upiAmount: links.upiAmount,
+          upiNote: links.upiNote,
+        })
+        .from(links)
+        .where(eq(links.shortCode, shortCode));
+
+      if (!dbLink) return {};
+
+      link = {
+        title: dbLink.title,
+        description: dbLink.description,
+        imageUrl: dbLink.imageUrl,
+        type: dbLink.type,
+        upiVpa: dbLink.upiVpa,
+        upiName: dbLink.upiName,
+        upiAmount: dbLink.upiAmount,
+        upiNote: dbLink.upiNote,
+      };
+
+      // Cache the metadata for future requests
+      await cacheLinkMetadata(shortCode, link);
+    }
 
     if (!link) return {};
 
@@ -73,30 +105,57 @@ const RedirectPage = async ({ params }: { params: Promise<{ shortCode: string }>
   const { shortCode } = await params;
   const headersList = await headers();
 
-  // Explicitly select all fields including UPI fields
-  const [link] = await db
-    .select({
-      id: links.id,
-      workspaceId: links.workspaceId,
-      shortCode: links.shortCode,
-      longUrl: links.longUrl,
-      clickCount: links.clickCount,
-      title: links.title,
-      description: links.description,
-      imageUrl: links.imageUrl,
-      tags: links.tags,
-      type: links.type,
-      upiVpa: links.upiVpa,
-      upiName: links.upiName,
-      upiAmount: links.upiAmount,
-      upiNote: links.upiNote,
-      createdAt: links.createdAt,
-    })
-    .from(links)
-    .where(eq(links.shortCode, shortCode));
+  // Try to get link from Redis cache first
+  let link: CachedLink | null = await getCachedLink(shortCode);
 
+  // If not in cache, fetch from database
   if (!link) {
-    notFound();
+    const [dbLink] = await db
+      .select({
+        id: links.id,
+        workspaceId: links.workspaceId,
+        shortCode: links.shortCode,
+        longUrl: links.longUrl,
+        clickCount: links.clickCount,
+        title: links.title,
+        description: links.description,
+        imageUrl: links.imageUrl,
+        tags: links.tags,
+        type: links.type,
+        upiVpa: links.upiVpa,
+        upiName: links.upiName,
+        upiAmount: links.upiAmount,
+        upiNote: links.upiNote,
+        createdAt: links.createdAt,
+      })
+      .from(links)
+      .where(eq(links.shortCode, shortCode));
+
+    if (!dbLink) {
+      notFound();
+    }
+
+    // Convert database result to cached format
+    link = {
+      id: dbLink.id,
+      workspaceId: dbLink.workspaceId,
+      shortCode: dbLink.shortCode,
+      longUrl: dbLink.longUrl,
+      clickCount: dbLink.clickCount,
+      title: dbLink.title,
+      description: dbLink.description,
+      imageUrl: dbLink.imageUrl,
+      tags: dbLink.tags,
+      type: dbLink.type,
+      upiVpa: dbLink.upiVpa,
+      upiName: dbLink.upiName,
+      upiAmount: dbLink.upiAmount,
+      upiNote: dbLink.upiNote,
+      createdAt: dbLink.createdAt instanceof Date ? dbLink.createdAt.toISOString() : dbLink.createdAt,
+    };
+
+    // Cache the link for future requests (async, don't wait)
+    cacheLink(link).catch((err) => console.error("Failed to cache link:", err));
   }
 
   // Handle UPI Express links - need client-side redirect for upi:// protocol

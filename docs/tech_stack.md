@@ -16,9 +16,11 @@ To achieve the "Operating at the Speed of Indian Business" USP, we need a stack 
 - **Database (Primary)**: **PostgreSQL** (Managed via Supabase or Neon)
   - _Why_: Relational data integrity for Users, Organizations, and Subscription management.
   - _Region_: **AWS Mumbai (ap-south-1)** - Mandatory for Data Residency.
-- **Caching & Redirection Layer**: **Redis** (Upstash or Redis Cloud)
+- **Caching & Redirection Layer**: **Redis** (Upstash) ✅ **IMPLEMENTED**
   - _Why_: The redirection engine _must not_ hit the SQL database for every click.
-  - _Flow_: User visits `lnk.in/xyz` -> Middleware checks Redis -> Redirects (Sub-50ms latency).
+  - _Flow_: User visits `lnk.in/xyz` -> Server checks Redis cache -> If hit, redirects immediately (<50ms latency). If miss, queries DB, caches result, then redirects.
+  - _Implementation_: Dynamic import with graceful fallback. Caches link data (24h TTL) and metadata (1h TTL). Automatic cache invalidation on create/update/delete.
+  - _See_: `docs/redis_caching.md` for detailed implementation guide.
 - **Analytics**: **Tinybird** (ClickHouse) or **Postgres** (initially)
   - _MVP_: Store click events in Postgres (partitioned).
   - _Scale_: Move click ingestion to Tinybird for real-time dashboards over millions of rows.
@@ -38,12 +40,15 @@ To achieve the "Operating at the Speed of Indian Business" USP, we need a stack 
 
 ```mermaid
 graph TD
-    User[(Mobile User)] -->|Clicks Link| Edge[Vercel Edge Middleware]
-    Edge -->|Check Cache| Redis[(Redis - Mumbai)]
-    Redis -- Hit --> Edge
-    Edge -- Redirect --> User
+    User[(Mobile User)] -->|Clicks Link| Server[Next.js Server]
+    Server -->|Check Cache| Redis[(Redis - Mumbai)]
+    Redis -- Hit --> Server
+    Server -- Redirect --> User
     Redis -- Miss --> DB[(PostgreSQL - Mumbai)]
     DB -- Cache Result --> Redis
 
-    Edge -.->|Async Event| Analytics[(Analytics Queue)]
+    Server -.->|Async Event| Analytics[(Analytics - PostgreSQL)]
 ```
+
+**Current Implementation**: Server-side caching in Next.js App Router with Redis.
+**Future Enhancement**: Move to Vercel Edge Middleware for even faster redirects.
