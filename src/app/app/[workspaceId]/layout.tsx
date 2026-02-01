@@ -73,6 +73,7 @@ const DashboardLayout = async ({
             <NavLink href={`/app/${workspaceId}`} icon="dashboard" label="Dashboard" />
             <NavLink href={`/app/${workspaceId}/links`} icon="links" label="Links" />
             <NavLink href={`/app/${workspaceId}/analytics`} icon="analytics" label="Analytics" />
+            <NavLink href={`/app/${workspaceId}/templates`} icon="templates" label="UTM Templates" />
             <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
           </nav>
 
@@ -117,6 +118,7 @@ const DashboardLayout = async ({
                     icon="analytics"
                     label="Analytics"
                   />
+                  <NavLink href={`/app/${workspaceId}/templates`} icon="templates" label="UTM Templates" />
                   <NavLink href={`/app/${workspaceId}/settings`} icon="settings" label="Settings" />
                 </nav>
 

@@ -13,7 +13,7 @@ import {
   utmTemplates,
 } from "@/db/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getUserPlan } from "@/lib/utils/plans";
 import { getLimit, getUpgradeSuggestion, PLANS } from "@/lib/plans";
@@ -662,9 +662,19 @@ export const leaveWorkspace = async (workspaceId: string) => {
 /**
  * Get activity logs for a workspace
  */
-export const getActivityLogs = async (workspaceId: string, limit: number = 50) => {
+export const getActivityLogs = async (
+  workspaceId: string,
+  page: number = 1,
+  limit: number = 20
+) => {
   const user = await currentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) {
+    return {
+      logs: [],
+      totalCount: 0,
+      totalPages: 0,
+    };
+  }
 
   // Check if user is a member
   const [member] = await db
@@ -674,10 +684,31 @@ export const getActivityLogs = async (workspaceId: string, limit: number = 50) =
     .limit(1);
 
   if (!member) {
-    throw new Error("You don't have access to this workspace");
+    return {
+      logs: [],
+      totalCount: 0,
+      totalPages: 0,
+    };
   }
 
   try {
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(activityLogs)
+      .where(
+        and(
+          eq(activityLogs.workspaceId, workspaceId),
+          eq(activityLogs.userId, user.id) // Only show logs for the current user
+        )
+      );
+
+    const totalCount = Number(count);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get paginated logs
     const logs = await db
       .select({
         id: activityLogs.id,
@@ -698,16 +729,25 @@ export const getActivityLogs = async (workspaceId: string, limit: number = 50) =
         )
       )
       .orderBy(desc(activityLogs.createdAt))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
-    return logs.map((log) => ({
-      ...log,
-      metadata: log.metadata ? JSON.parse(log.metadata) : null,
-    }));
+    return {
+      logs: logs.map((log) => ({
+        ...log,
+        metadata: log.metadata ? JSON.parse(log.metadata) : null,
+      })),
+      totalCount,
+      totalPages,
+    };
   } catch (error) {
     // If table doesn't exist yet, return empty array
     console.error("Error fetching activity logs:", error);
-    return [];
+    return {
+      logs: [],
+      totalCount: 0,
+      totalPages: 0,
+    };
   }
 };
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { users, workspaceMembers, workspaceInvitations, activityLogs } from "@/db/schema";
+import { users, workspaceMembers, workspaceInvitations, activityLogs, utmTemplates } from "@/db/schema";
 import { eq, and, gte, count, inArray } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { getPlan, type PlanTier, getLimit, isUnlimited } from "@/lib/plans";
@@ -305,6 +305,89 @@ export const getRemainingLinks = async (
   const limit = getLimit(planTier, "monthlyLinks");
   // Count links across all user workspaces, not just the current workspace
   const used = await getMonthlyLinkCount();
+
+  if (limit === null) {
+    return { remaining: null, used, limit: null };
+  }
+
+  return {
+    remaining: Math.max(0, limit - used),
+    used,
+    limit,
+  };
+};
+
+/**
+ * Get UTM template count for a workspace
+ */
+export const getUtmTemplateCount = async (workspaceId: string): Promise<number> => {
+  const [result] = await db
+    .select({ count: count() })
+    .from(utmTemplates)
+    .where(eq(utmTemplates.workspaceId, workspaceId));
+
+  return result?.count || 0;
+};
+
+/**
+ * Check if user can create more UTM templates in a workspace
+ */
+export const canCreateUtmTemplate = async (
+  workspaceId: string
+): Promise<{
+  allowed: boolean;
+  reason?: string;
+  currentCount?: number;
+  limit?: number;
+}> => {
+  const user = await currentUser();
+  if (!user) {
+    return { allowed: false, reason: "Unauthorized" };
+  }
+
+  const planTier = await getUserPlan();
+
+  // Check if unlimited
+  if (isUnlimited(planTier, "utmTemplates")) {
+    return { allowed: true };
+  }
+
+  const limit = getLimit(planTier, "utmTemplates");
+  if (limit === null) {
+    return { allowed: true };
+  }
+
+  const currentCount = await getUtmTemplateCount(workspaceId);
+
+  if (currentCount >= limit) {
+    return {
+      allowed: false,
+      reason: `You've reached your UTM template limit of ${limit}. Upgrade to create more templates.`,
+      currentCount,
+      limit,
+    };
+  }
+
+  return {
+    allowed: true,
+    currentCount,
+    limit,
+  };
+};
+
+/**
+ * Get remaining UTM templates for a workspace
+ */
+export const getRemainingUtmTemplates = async (
+  workspaceId: string
+): Promise<{
+  remaining: number | null;
+  used: number;
+  limit: number | null;
+}> => {
+  const planTier = await getUserPlan();
+  const limit = getLimit(planTier, "utmTemplates");
+  const used = await getUtmTemplateCount(workspaceId);
 
   if (limit === null) {
     return { remaining: null, used, limit: null };

@@ -36,7 +36,8 @@ const LinksPage = async ({
     sortOrder: (sortOrder as "asc" | "desc") || "desc",
     tagFilter: tagNames.length > 0 ? tagNames : undefined,
   });
-  const templates = await getUtmTemplates(workspaceId);
+  const templatesResult = await getUtmTemplates(workspaceId, 1, 100);
+  const templates = Array.isArray(templatesResult) ? templatesResult : templatesResult.templates;
   const allTags = await getAllTags(workspaceId);
 
   return (
