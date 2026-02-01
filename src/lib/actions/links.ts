@@ -15,6 +15,7 @@ import {
   type CachedLink,
   type CachedLinkMetadata,
 } from "@/lib/redis";
+import { normalizeUrl } from "@/lib/utils/url";
 
 /**
  * Check if user is a member of a workspace
@@ -29,55 +30,6 @@ const isWorkspaceMember = async (workspaceId: string, userId: string): Promise<b
   return !!member;
 };
 
-/**
- * Validates and normalizes a URL
- * @param url - The URL to validate
- * @returns Normalized URL or throws an error if invalid
- */
-const validateAndNormalizeUrl = (url: string): string => {
-  if (!url || typeof url !== "string") {
-    throw new Error("URL is required");
-  }
-
-  const trimmedUrl = url.trim();
-
-  if (trimmedUrl.length === 0) {
-    throw new Error("URL cannot be empty");
-  }
-
-  // Try to parse as-is first
-  try {
-    const urlObj = new URL(trimmedUrl);
-    // Ensure it's http or https
-    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
-      throw new Error("URL must use http:// or https:// protocol");
-    }
-    return urlObj.toString();
-  } catch {
-    // If parsing fails, try adding https://
-    try {
-      const urlWithProtocol = `https://${trimmedUrl}`;
-      const urlObj = new URL(urlWithProtocol);
-      // Validate it's a valid domain format
-      if (!urlObj.hostname || urlObj.hostname.length === 0) {
-        throw new Error("Invalid URL format");
-      }
-      // Check for basic domain pattern (at least one dot or localhost)
-      if (
-        !urlObj.hostname.includes(".") &&
-        urlObj.hostname !== "localhost" &&
-        !urlObj.hostname.match(/^\[.*\]$/) // IPv6
-      ) {
-        throw new Error("Invalid domain format");
-      }
-      return urlObj.toString();
-    } catch {
-      throw new Error(
-        `Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)`
-      );
-    }
-  }
-};
 
 export const createLink = async (workspaceId: string, formData: FormData) => {
   const user = await currentUser();
@@ -124,7 +76,7 @@ export const createLink = async (workspaceId: string, formData: FormData) => {
   } else {
     // Validate and normalize standard URLs
     try {
-      normalizedUrl = validateAndNormalizeUrl(longUrl);
+      normalizedUrl = normalizeUrl(longUrl);
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "Invalid URL");
     }
@@ -274,7 +226,7 @@ export const updateLink = async (linkId: string, workspaceId: string, formData: 
   // Validate and normalize URL
   let normalizedUrl: string;
   try {
-    normalizedUrl = validateAndNormalizeUrl(longUrl);
+      normalizedUrl = normalizeUrl(longUrl);
   } catch (error) {
     throw new Error(error instanceof Error ? error.message : "Invalid URL");
   }

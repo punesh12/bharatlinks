@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -9,23 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   cancelInvitation,
   changeMemberRole,
@@ -35,21 +18,17 @@ import {
   leaveWorkspace,
   removeTeamMember,
 } from "@/lib/actions/team";
-import { format } from "date-fns";
 import {
   AlertCircle,
-  Crown,
   Loader2,
   LogOut,
-  Mail,
-  MoreVertical,
-  User,
-  UserPlus,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { InviteMemberDialog } from "./invite-member-dialog";
+import { TeamMembersList } from "./team-members-list";
+import { InvitationsList } from "./invitations-list";
 
 interface TeamMember {
   userId: string;
@@ -86,17 +65,17 @@ export const TeamManagement = ({
   limitCheck,
 }: TeamManagementProps) => {
   const router = useRouter();
-  const [members, setMembers] = React.useState<TeamMember[]>([]);
-  const [invitations, setInvitations] = React.useState<PendingInvitation[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
-  const [inviteEmail, setInviteEmail] = React.useState("");
-  const [inviteRole, setInviteRole] = React.useState<"owner" | "member">("member");
-  const [inviting, setInviting] = React.useState(false);
-  const [leaving, setLeaving] = React.useState(false);
-  const [leaveModalOpen, setLeaveModalOpen] = React.useState(false);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"owner" | "member">("member");
+  const [inviting, setInviting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
-  const loadData = React.useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [membersData, invitationsData] = await Promise.all([
@@ -112,11 +91,11 @@ export const TeamManagement = ({
     }
   }, [workspaceId, isOwner]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleInvite = async () => {
+  const handleInvite = useCallback(async () => {
     if (!inviteEmail.trim()) {
       toast.error("Please enter an email address");
       return;
@@ -135,43 +114,52 @@ export const TeamManagement = ({
     } finally {
       setInviting(false);
     }
-  };
+  }, [workspaceId, inviteEmail, inviteRole, loadData]);
 
-  const handleChangeRole = async (userId: string, newRole: "owner" | "member") => {
-    try {
-      await changeMemberRole(workspaceId, userId, newRole);
-      toast.success("Role updated successfully");
-      loadData();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to change role");
-    }
-  };
+  const handleChangeRole = useCallback(
+    async (userId: string, newRole: "owner" | "member") => {
+      try {
+        await changeMemberRole(workspaceId, userId, newRole);
+        toast.success("Role updated successfully");
+        loadData();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to change role");
+      }
+    },
+    [workspaceId, loadData]
+  );
 
-  const handleRemoveMember = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this member?")) {
-      return;
-    }
+  const handleRemoveMember = useCallback(
+    async (userId: string) => {
+      if (!confirm("Are you sure you want to remove this member?")) {
+        return;
+      }
 
-    try {
-      await removeTeamMember(workspaceId, userId);
-      toast.success("Member removed successfully");
-      loadData();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove member");
-    }
-  };
+      try {
+        await removeTeamMember(workspaceId, userId);
+        toast.success("Member removed successfully");
+        loadData();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to remove member");
+      }
+    },
+    [workspaceId, loadData]
+  );
 
-  const handleCancelInvitation = async (invitationId: string) => {
-    try {
-      await cancelInvitation(invitationId);
-      toast.success("Invitation cancelled");
-      loadData();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to cancel invitation");
-    }
-  };
+  const handleCancelInvitation = useCallback(
+    async (invitationId: string) => {
+      try {
+        await cancelInvitation(invitationId);
+        toast.success("Invitation cancelled");
+        loadData();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to cancel invitation");
+      }
+    },
+    [loadData]
+  );
 
-  const handleLeaveWorkspace = async () => {
+  const handleLeaveWorkspace = useCallback(async () => {
     setLeaveModalOpen(false);
     setLeaving(true);
     try {
@@ -185,7 +173,7 @@ export const TeamManagement = ({
       toast.error(error instanceof Error ? error.message : "Failed to leave workspace");
       setLeaving(false);
     }
-  };
+  }, [workspaceId, router]);
 
   if (loading) {
     return (
@@ -246,67 +234,17 @@ export const TeamManagement = ({
               </CardDescription>
             </div>
             {isOwner && (
-              <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button disabled={limitCheck ? !limitCheck.allowed : false}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Member
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
-                    <DialogDescription>
-                      Send an invitation to collaborate on this workspace
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="colleague@example.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select
-                        value={inviteRole}
-                        onValueChange={(value) => setInviteRole(value as "owner" | "member")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="owner">Owner</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleInvite} disabled={inviting}>
-                        {inviting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Invitation
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <InviteMemberDialog
+                isOpen={inviteDialogOpen}
+                onOpenChange={setInviteDialogOpen}
+                inviteEmail={inviteEmail}
+                inviteRole={inviteRole}
+                inviting={inviting}
+                onEmailChange={setInviteEmail}
+                onRoleChange={setInviteRole}
+                onInvite={handleInvite}
+                disabled={limitCheck ? !limitCheck.allowed : false}
+              />
             )}
           </div>
         </CardHeader>
@@ -317,143 +255,20 @@ export const TeamManagement = ({
               <p className="text-sm text-yellow-800">{limitCheck.reason}</p>
             </div>
           )}
-          <div className="space-y-3">
-            {members.map((member) => (
-              <div
-                key={member.userId}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
-                    {member.role === "owner" ? (
-                      <Crown className="h-5 w-5 text-yellow-600" />
-                    ) : (
-                      <User className="h-5 w-5 text-slate-600" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{member.email}</p>
-                      <Badge variant={member.role === "owner" ? "default" : "secondary"}>
-                        {member.role === "owner" ? "Owner" : "Member"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Joined {format(new Date(member.joinedAt), "MMM d, yyyy")}
-                    </p>
-                  </div>
-                </div>
-                {isOwner && member.userId !== currentUserId && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          handleChangeRole(
-                            member.userId,
-                            member.role === "owner" ? "member" : "owner"
-                          )
-                        }
-                      >
-                        Change to {member.role === "owner" ? "Member" : "Owner"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleRemoveMember(member.userId)}
-                        className="text-red-600"
-                      >
-                        Remove from workspace
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {member.userId === currentUserId &&
-                  (() => {
-                    // Members can always leave
-                    if (member.role === "member") {
-                      return (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLeaveModalOpen(true)}
-                          disabled={leaving}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Leave Workspace
-                        </Button>
-                      );
-                    }
-                    // Owners can leave only if there are multiple owners
-                    if (member.role === "owner") {
-                      const ownerCount = members.filter((m) => m.role === "owner").length;
-                      if (ownerCount > 1) {
-                        return (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLeaveModalOpen(true)}
-                            disabled={leaving}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Leave Workspace
-                          </Button>
-                        );
-                      }
-                    }
-                    return null;
-                  })()}
-              </div>
-            ))}
-          </div>
+          <TeamMembersList
+            members={members}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            leaving={leaving}
+            onLeaveWorkspace={() => setLeaveModalOpen(true)}
+            onChangeRole={handleChangeRole}
+            onRemoveMember={handleRemoveMember}
+          />
         </CardContent>
       </Card>
 
       {/* Pending Invitations */}
-      {isOwner && invitations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>Invitations waiting for acceptance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {invitations.map((invitation) => (
-                <div
-                  key={invitation.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-slate-400" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{invitation.email}</p>
-                        <Badge variant="outline">
-                          {invitation.role === "owner" ? "Owner" : "Member"}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Expires {format(new Date(invitation.expiresAt), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCancelInvitation(invitation.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {isOwner && <InvitationsList invitations={invitations} onCancelInvitation={handleCancelInvitation} />}
     </div>
   );
 };

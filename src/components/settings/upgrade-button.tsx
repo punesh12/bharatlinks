@@ -14,7 +14,6 @@ interface UpgradeButtonProps {
 }
 
 export function UpgradeButton({
-  currentPlan,
   targetPlan,
   className,
   children,

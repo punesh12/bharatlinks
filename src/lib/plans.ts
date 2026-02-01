@@ -192,7 +192,8 @@ export const isUnlimited = (tier: PlanTier, limit: keyof PlanLimits): boolean =>
  */
 export const getUpgradeSuggestion = (
   currentTier: PlanTier,
-  reason: "links" | "domains" | "team" | "analytics" | "features"
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _reason?: "links" | "domains" | "team" | "analytics" | "features"
 ): PlanTier | null => {
   const tierOrder: PlanTier[] = ["free", "starter", "pro", "organization"];
   const currentIndex = tierOrder.indexOf(currentTier);

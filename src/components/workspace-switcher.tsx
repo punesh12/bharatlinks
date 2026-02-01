@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -35,10 +35,10 @@ export const WorkspaceSwitcher = ({
   currentWorkspaceId: string;
 }) => {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-  const [showNewWorkspaceDialog, setShowNewWorkspaceDialog] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [showNewWorkspaceDialog, setShowNewWorkspaceDialog] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) || workspaces[0];
 

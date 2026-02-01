@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tag, HelpCircle, X, Check } from "lucide-react";
+import { Tag, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TagChip } from "./tag-chip";
+import { TagDropdown } from "./tag-dropdown";
 
 interface TagOption {
   id: string;
@@ -21,67 +22,6 @@ interface TagsInputProps {
   onManageClick?: () => void;
   maxTags?: number;
 }
-
-// Generate a color for a tag based on its name
-const getTagColor = (tagName: string) => {
-  const colors = [
-    {
-      bg: "bg-yellow-100",
-      text: "text-yellow-800",
-      border: "border-yellow-200",
-      icon: "text-yellow-600",
-    },
-    {
-      bg: "bg-orange-100",
-      text: "text-orange-800",
-      border: "border-orange-200",
-      icon: "text-orange-600",
-    },
-    {
-      bg: "bg-amber-100",
-      text: "text-amber-800",
-      border: "border-amber-200",
-      icon: "text-amber-600",
-    },
-    {
-      bg: "bg-blue-100",
-      text: "text-blue-800",
-      border: "border-blue-200",
-      icon: "text-blue-600",
-    },
-    {
-      bg: "bg-indigo-100",
-      text: "text-indigo-800",
-      border: "border-indigo-200",
-      icon: "text-indigo-600",
-    },
-    {
-      bg: "bg-purple-100",
-      text: "text-purple-800",
-      border: "border-purple-200",
-      icon: "text-purple-600",
-    },
-    {
-      bg: "bg-pink-100",
-      text: "text-pink-800",
-      border: "border-pink-200",
-      icon: "text-pink-600",
-    },
-    {
-      bg: "bg-green-100",
-      text: "text-green-800",
-      border: "border-green-200",
-      icon: "text-green-600",
-    },
-  ];
-
-  // Simple hash function to get consistent color for same tag name
-  let hash = 0;
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
 
 export const TagsInput = ({
   value = [],
@@ -254,32 +194,9 @@ export const TagsInput = ({
           </div>
         ) : (
           <>
-            {value.map((tag) => {
-              const colors = getTagColor(tag);
-              return (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className={cn(
-                    "px-2.5 py-1 text-sm font-medium flex items-center gap-1.5 cursor-default",
-                    colors.bg,
-                    colors.text,
-                    colors.border,
-                    "hover:opacity-90 transition-opacity"
-                  )}
-                >
-                  <Tag className={cn("h-3 w-3", colors.icon)} />
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => handleRemoveTag(tag, e)}
-                    className="ml-1 hover:bg-black/10 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className={cn("h-3 w-3", colors.text)} />
-                  </button>
-                </Badge>
-              );
-            })}
+            {value.map((tag) => (
+              <TagChip key={tag} tag={tag} onRemove={handleRemoveTag} />
+            ))}
             {/* Input field for adding more tags when tags already exist */}
             <div className="flex items-center gap-2 flex-1 min-w-[120px]">
               <Input
@@ -303,67 +220,14 @@ export const TagsInput = ({
       </div>
 
       {/* Available Tags Dropdown */}
-      {isOpen && (
-        <div className="border border-slate-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto">
-          {/* Show option to add new tag if input has value */}
-          {newTagInput.trim() &&
-            !availableTags.some(
-              (tag) => tag.name.toLowerCase() === newTagInput.trim().toLowerCase()
-            ) &&
-            !value.includes(newTagInput.trim().toLowerCase()) && (
-              <button
-                type="button"
-                onClick={() => handleAddNewTag(newTagInput)}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-200"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="h-4 w-4 border border-slate-300 rounded flex items-center justify-center flex-shrink-0">
-                    <Tag className="h-3 w-3 text-slate-400" />
-                  </div>
-                  <span className="text-sm text-slate-600">
-                    Add &quot;{newTagInput.trim()}&quot;
-                  </span>
-                </div>
-              </button>
-            )}
-
-          {/* Show available tags */}
-          {availableTags.length > 0
-            ? availableTags.map((tag) => {
-                const isSelected = value.includes(tag.name.toLowerCase());
-                const colors = getTagColor(tag.name);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => handleToggleTag(tag.name)}
-                    className={cn(
-                      "w-full px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-b-0",
-                      isSelected && "bg-slate-50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div
-                        className={cn(
-                          "h-4 w-4 border rounded flex items-center justify-center flex-shrink-0",
-                          isSelected ? "bg-slate-700 border-slate-700" : "border-slate-300"
-                        )}
-                      >
-                        {isSelected && <Check className="h-3 w-3 text-white" />}
-                      </div>
-                      <Tag className={cn("h-4 w-4 flex-shrink-0", colors.icon)} />
-                      <span className="text-sm text-slate-900">{tag.name}</span>
-                    </div>
-                  </button>
-                );
-              })
-            : !newTagInput.trim() && (
-                <div className="px-3 py-4 text-center text-sm text-slate-500">
-                  No tags available. Tags will appear here as you create links.
-                </div>
-              )}
-        </div>
-      )}
+      <TagDropdown
+        isOpen={isOpen}
+        newTagInput={newTagInput}
+        availableTags={availableTags}
+        selectedTags={value}
+        onToggleTag={handleToggleTag}
+        onAddNewTag={handleAddNewTag}
+      />
     </div>
   );
 };

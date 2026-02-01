@@ -2,13 +2,15 @@
  * Redis client for caching link data
  * Uses Upstash Redis REST API for edge-compatible caching
  */
-let redisClient: any = null;
-let RedisClass: any = null;
+import type { Redis } from "@upstash/redis";
+
+let redisClient: Redis | null = null;
+let RedisClass: typeof Redis | null = null;
 let importAttempted = false;
 let importFailed = false;
 
 // Dynamically import Redis to handle cases where package isn't installed
-const getRedisClient = async (): Promise<any> => {
+const getRedisClient = async (): Promise<Redis | null> => {
   // Return existing client if already initialized
   if (redisClient) {
     return redisClient;
@@ -34,7 +36,7 @@ const getRedisClient = async (): Promise<any> => {
     try {
       const redisModule = await import("@upstash/redis");
       RedisClass = redisModule.Redis;
-    } catch (error) {
+    } catch {
       // Package not installed or import failed - only log once
       console.warn("⚠️ @upstash/redis package not found. Caching disabled. Install it with: npm install @upstash/redis");
       importFailed = true;

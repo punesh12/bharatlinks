@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { users, links, workspaceMembers, workspaceInvitations, activityLogs } from "@/db/schema";
+import { users, workspaceMembers, workspaceInvitations, activityLogs } from "@/db/schema";
 import { eq, and, gte, count, inArray } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { getPlan, type PlanTier, getLimit, isUnlimited } from "@/lib/plans";
@@ -100,8 +100,9 @@ export const getMonthlyLinkCount = async (workspaceId?: string): Promise<number>
  * Check if user can create more links this month
  * Note: workspaceId parameter is kept for backward compatibility but usage is now aggregated across all user workspaces
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export const canCreateLink = async (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _workspaceId: string
 ): Promise<{
   allowed: boolean;
