@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -15,8 +15,8 @@ interface InvitationAcceptanceProps {
 
 export const InvitationAcceptance = ({ token }: InvitationAcceptanceProps) => {
   const router = useRouter();
-  const [loading, setLoading] = React.useState(false);
-  const [action, setAction] = React.useState<"accept" | "reject" | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [action, setAction] = useState<"accept" | "reject" | null>(null);
 
   const handleAccept = async () => {
     setLoading(true);

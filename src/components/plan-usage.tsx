@@ -1,73 +1,92 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { type PlanTier, PLANS, getUpgradeSuggestion } from "@/lib/plans";
 import { getRemainingLinks, getUserPlan } from "@/lib/utils/plans";
 import { Link2 } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { UsageDetailsModal } from "@/components/settings/usage-details-modal";
+import { formatDate, getResetDate } from "@/lib/utils/date";
+import dynamic from "next/dynamic";
+
+// Lazy load rarely used modal
+const UsageDetailsModal = dynamic(
+  () => import("@/components/settings/usage-details-modal").then((m) => m.UsageDetailsModal),
+  { ssr: false }
+);
 
 interface PlanUsageProps {
   workspaceId: string;
 }
 
-/**
- * Calculate the reset date (first day of next month)
- * The usage count automatically resets on this date because getMonthlyLinkCount()
- * filters links by createdAt >= startOfMonth, which changes on the 1st of each month
- */
-const getResetDate = (): Date => {
-  const now = new Date();
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return nextMonth;
-};
-
 export const PlanUsage = ({ workspaceId }: PlanUsageProps) => {
-  const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
-  const [linkLimit, setLinkLimit] = React.useState<{
+  const [currentPlan, setCurrentPlan] = useState<PlanTier>("free");
+  const [linkLimit, setLinkLimit] = useState<{
     remaining: number | null;
     used: number;
     limit: number | null;
   } | null>(null);
-  const [usageModalOpen, setUsageModalOpen] = React.useState(false);
-  const [resetDate, setResetDate] = React.useState<Date | null>(null);
+  const [usageModalOpen, setUsageModalOpen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     getUserPlan()
       .then(setCurrentPlan)
       .catch(() => setCurrentPlan("free"));
     getRemainingLinks(workspaceId)
       .then(setLinkLimit)
       .catch(() => setLinkLimit(null));
-    // Calculate reset date on client side only to avoid hydration mismatch
-    setResetDate(getResetDate());
   }, [workspaceId]);
 
-  if (!linkLimit || linkLimit.limit === null) {
-    return null; // Don't show for unlimited plans
-  }
-  const upgradeSuggestionTier = getUpgradeSuggestion(currentPlan, "links");
-  const upgradeSuggestion = upgradeSuggestionTier ? PLANS[upgradeSuggestionTier] : null;
-  const showUpgrade =
-    currentPlan === "free" ||
-    linkLimit.remaining === 0 ||
-    (linkLimit.remaining !== null &&
-      linkLimit.limit !== null &&
-      linkLimit.remaining / linkLimit.limit < 0.2);
-  const billingUrl = `/app/${workspaceId}/settings/billing`;
-  const planConfig = PLANS[currentPlan];
+  // Calculate reset date on client side only to avoid hydration mismatch
+  // Use useMemo to avoid setState in effect
+  const resetDate = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return getResetDate();
+    }
+    return null;
+  }, []);
 
-  const getProgressColor = () => {
-    if (!linkLimit.limit) return "bg-blue-600";
+  // Memoize expensive computations
+  const upgradeSuggestionTier = useMemo(
+    () => getUpgradeSuggestion(currentPlan, "links"),
+    [currentPlan]
+  );
+  const upgradeSuggestion = useMemo(
+    () => (upgradeSuggestionTier ? PLANS[upgradeSuggestionTier] : null),
+    [upgradeSuggestionTier]
+  );
+  const showUpgrade = useMemo(() => {
+    if (!linkLimit) return false;
+    return (
+      currentPlan === "free" ||
+      linkLimit.remaining === 0 ||
+      (linkLimit.remaining !== null &&
+        linkLimit.limit !== null &&
+        linkLimit.remaining / linkLimit.limit < 0.2)
+    );
+  }, [currentPlan, linkLimit]);
+  const billingUrl = useMemo(() => `/app/${workspaceId}/settings/billing`, [workspaceId]);
+  const planConfig = useMemo(() => PLANS[currentPlan], [currentPlan]);
+
+  const getProgressColor = useCallback(() => {
+    if (!linkLimit || !linkLimit.limit) return "bg-blue-600";
     const usagePercent = (linkLimit.used / linkLimit.limit) * 100;
     if (usagePercent >= 90) return "bg-red-500";
     if (usagePercent >= 75) return "bg-orange-500";
     if (usagePercent >= 50) return "bg-yellow-500";
     return "bg-green-500";
-  };
+  }, [linkLimit]);
+
+  const progressColor = useMemo(() => getProgressColor(), [getProgressColor]);
+  const progressWidth = useMemo(() => {
+    if (!linkLimit || !linkLimit.limit) return 0;
+    return Math.min(100, (linkLimit.used / linkLimit.limit) * 100);
+  }, [linkLimit]);
+
+  if (!linkLimit || linkLimit.limit === null) {
+    return null; // Don't show for unlimited plans
+  }
 
   return (
     <>
@@ -99,9 +118,9 @@ export const PlanUsage = ({ workspaceId }: PlanUsageProps) => {
           </div>
           <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
             <div
-              className={cn("h-1.5 rounded-full transition-all", getProgressColor())}
+              className={cn("h-1.5 rounded-full transition-all", progressColor)}
               style={{
-                width: `${Math.min(100, (linkLimit.used / linkLimit.limit) * 100)}%`,
+                width: `${progressWidth}%`,
               }}
             />
           </div>
@@ -127,7 +146,7 @@ export const PlanUsage = ({ workspaceId }: PlanUsageProps) => {
         {/* Reset Date */}
         {resetDate && (
           <p className="text-xs text-slate-500" suppressHydrationWarning>
-            Resets {format(resetDate, "MMM d, yyyy")}
+            Resets {formatDate(resetDate)}
           </p>
         )}
 

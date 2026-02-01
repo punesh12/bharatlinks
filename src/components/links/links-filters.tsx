@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Search, Tag, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, useTransition } from "react";
 import { cn } from "@/lib/utils";
 
 interface Tag {
@@ -25,79 +25,126 @@ interface LinksFiltersProps {
   tags?: Tag[];
 }
 
+// Move getSortLabel outside component to avoid recreation
+const getSortLabel = (value: string) => {
+  switch (value) {
+    case "createdAt":
+      return "Date Created";
+    case "clickCount":
+      return "Click Count";
+    case "title":
+      return "Title";
+    default:
+      return "Date Created";
+  }
+};
+
 export const LinksFilters = ({ tags = [] }: LinksFiltersProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "createdAt");
   const [sortOrder, setSortOrder] = useState(searchParams.get("sortOrder") || "desc");
   const [selectedTags, setSelectedTags] = useState<string[]>(
     searchParams.get("tags")?.split(",").filter(Boolean) || []
   );
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const updateURL = (updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const updateURL = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value && value !== "") {
-        params.set(key, value);
-      } else {
-        params.delete(key);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value && value !== "") {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+      });
+
+      // Reset to page 1 when filters change
+      params.set("page", "1");
+
+      router.push(`?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  // Debounced search handler
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearch(value);
+      
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
-    });
 
-    // Reset to page 1 when filters change
-    params.set("page", "1");
+      // Set new timer for debounced URL update with transition
+      debounceTimerRef.current = setTimeout(() => {
+        startTransition(() => {
+          updateURL({ search: value || null });
+        });
+      }, 300);
+    },
+    [updateURL]
+  );
 
-    router.push(`?${params.toString()}`);
-  };
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    updateURL({ search: value || null });
-  };
+  const handleSortBy = useCallback(
+    (value: string) => {
+      setSortBy(value);
+      updateURL({ sortBy: value });
+    },
+    [updateURL]
+  );
 
-  const handleSortBy = (value: string) => {
-    setSortBy(value);
-    updateURL({ sortBy: value });
-  };
+  const handleSortOrder = useCallback(
+    (value: string) => {
+      setSortOrder(value);
+      updateURL({ sortOrder: value });
+    },
+    [updateURL]
+  );
 
-  const handleSortOrder = (value: string) => {
-    setSortOrder(value);
-    updateURL({ sortOrder: value });
-  };
+  const toggleTag = useCallback(
+    (tagName: string) => {
+      setSelectedTags((prevTags) => {
+        const newTags = prevTags.includes(tagName)
+          ? prevTags.filter((name) => name !== tagName)
+          : [...prevTags, tagName];
+        startTransition(() => {
+          updateURL({ tags: newTags.length > 0 ? newTags.join(",") : null });
+        });
+        return newTags;
+      });
+    },
+    [updateURL, startTransition]
+  );
 
-  const toggleTag = (tagName: string) => {
-    const newTags = selectedTags.includes(tagName)
-      ? selectedTags.filter((name) => name !== tagName)
-      : [...selectedTags, tagName];
-    setSelectedTags(newTags);
-    updateURL({ tags: newTags.length > 0 ? newTags.join(",") : null });
-  };
-
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearch("");
     setSortBy("createdAt");
     setSortOrder("desc");
     setSelectedTags([]);
     router.push("?page=1");
-  };
+  }, [router]);
 
-  const hasActiveFilters =
-    search || sortBy !== "createdAt" || sortOrder !== "desc" || selectedTags.length > 0;
-
-  const getSortLabel = (value: string) => {
-    switch (value) {
-      case "createdAt":
-        return "Date Created";
-      case "clickCount":
-        return "Click Count";
-      case "title":
-        return "Title";
-      default:
-        return "Date Created";
-    }
-  };
+  // Memoize hasActiveFilters computation
+  const hasActiveFilters = useMemo(
+    () =>
+      search || sortBy !== "createdAt" || sortOrder !== "desc" || selectedTags.length > 0,
+    [search, sortBy, sortOrder, selectedTags.length]
+  );
 
   return (
     <div className="space-y-4">

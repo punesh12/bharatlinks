@@ -1,9 +1,8 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect, memo, useMemo, createElement } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { format } from "date-fns";
+import { formatDateTime } from "@/lib/utils/date";
 import { Loader2, Link2, UserPlus, UserMinus, Shield, Trash2, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getActivityLogs } from "@/lib/actions/team";
@@ -62,10 +61,10 @@ const getActionLabel = (action: string, metadata: Record<string, unknown> | null
 };
 
 export const ActivityLogs = ({ workspaceId }: ActivityLogsProps) => {
-  const [logs, setLogs] = React.useState<ActivityLog[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadLogs = async () => {
       try {
         setLoading(true);
@@ -115,32 +114,54 @@ export const ActivityLogs = ({ workspaceId }: ActivityLogsProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {logs.map((log) => {
-            const Icon = getActionIcon(log.action);
-            return (
-              <div key={log.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <Icon className="h-4 w-4 text-slate-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-sm">{log.userEmail}</p>
-                    <Badge variant="outline" className="text-xs">
-                      {log.entityType}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {getActionLabel(log.action, log.metadata)}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {format(new Date(log.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+          {logs.map((log) => (
+            <ActivityLogItem key={log.id} log={log} />
+          ))}
         </div>
       </CardContent>
     </Card>
   );
 };
+
+// Memoized ActivityLogItem component to prevent unnecessary re-renders
+const ActivityLogItem = memo(({ log }: { log: ActivityLog }) => {
+  // Memoize expensive computations
+  const actionLabel = useMemo(
+    () => getActionLabel(log.action, log.metadata),
+    [log.action, log.metadata]
+  );
+  const formattedDate = useMemo(() => formatDateTime(log.createdAt), [log.createdAt]);
+
+  // Get icon component reference (not creating during render)
+  const IconComponent = useMemo(() => getActionIcon(log.action), [log.action]);
+
+  return (
+    <div className="flex items-start gap-3 p-3 border rounded-lg">
+      <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        {createElement(IconComponent, { className: "h-4 w-4 text-slate-600" })}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm">{log.userEmail}</p>
+          <Badge variant="outline" className="text-xs">
+            {log.entityType}
+          </Badge>
+        </div>
+        <p className="text-sm text-slate-600 mt-1">{actionLabel}</p>
+        <p className="text-xs text-slate-400 mt-1">{formattedDate}</p>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return (
+    prevProps.log.id === nextProps.log.id &&
+    prevProps.log.action === nextProps.log.action &&
+    prevProps.log.userEmail === nextProps.log.userEmail &&
+    prevProps.log.entityType === nextProps.log.entityType &&
+    prevProps.log.createdAt === nextProps.log.createdAt &&
+    JSON.stringify(prevProps.log.metadata) === JSON.stringify(nextProps.log.metadata)
+  );
+});
+
+ActivityLogItem.displayName = "ActivityLogItem";

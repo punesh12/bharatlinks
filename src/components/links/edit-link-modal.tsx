@@ -1,6 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,18 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { updateLink, getAllTags } from "@/lib/actions/links";
-import { QRCodeCanvas } from "qrcode.react";
-import { QrCode, HelpCircle } from "lucide-react";
-import { useParams } from "next/navigation";
+import { updateLink } from "@/lib/actions/links";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
-import Image from "next/image";
-import { TagsInput } from "@/components/ui/tags-input";
-import { getUserPlan } from "@/lib/utils/plans";
-import { type PlanTier } from "@/lib/plans";
+import { validateUrl } from "@/lib/utils/url-validation";
+import { LinkFormFields } from "./link-form-fields";
+import { SocialPreviewSection } from "./social-preview-section";
+import { LinkPreviewSection } from "./link-preview-section";
+import { useHostname } from "@/hooks/use-hostname";
+import { useLinkFormData } from "@/hooks/use-link-form-data";
 
 interface EditLinkModalProps {
   isOpen: boolean;
@@ -41,79 +38,21 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
   const params = useParams();
   const workspaceId = params.workspaceId as string;
 
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [title, setTitle] = React.useState(link.title || "");
-  const [description, setDescription] = React.useState(link.description || "");
-  const [imageUrl, setImageUrl] = React.useState(link.imageUrl || "");
-  const [longUrl, setLongUrl] = React.useState(link.longUrl || "");
-  const [urlError, setUrlError] = React.useState<string | null>(null);
-  const [tags, setTags] = React.useState<string[]>(
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [title, setTitle] = useState(link.title || "");
+  const [description, setDescription] = useState(link.description || "");
+  const [imageUrl, setImageUrl] = useState(link.imageUrl || "");
+  const [longUrl, setLongUrl] = useState(link.longUrl || "");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>(
     link.tags ? link.tags.map((t) => t.name.toLowerCase()) : []
   );
-  const [availableTags, setAvailableTags] = React.useState<{ id: string; name: string }[]>([]);
-  const [showSocial, setShowSocial] = React.useState(!!(title || description || imageUrl));
-  const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
-  const [hostname, setHostname] = React.useState("bharatlinks.in");
+  const [showSocial, setShowSocial] = useState(!!(title || description || imageUrl));
 
-  // Fetch available tags and plan info when modal opens
-  React.useEffect(() => {
-    if (isOpen) {
-      getAllTags(workspaceId)
-        .then(setAvailableTags)
-        .catch(() => setAvailableTags([]));
-      getUserPlan()
-        .then(setCurrentPlan)
-        .catch(() => setCurrentPlan("free"));
-    }
-    // Set hostname on client side only to avoid hydration mismatch
-    if (typeof window !== "undefined") {
-      setHostname(window.location.hostname);
-    }
-  }, [isOpen, workspaceId]);
+  // Custom hooks
+  const hostname = useHostname();
+  const { availableTags, currentPlan } = useLinkFormData(workspaceId, isOpen);
 
-  // URL validation function
-  const validateUrl = (url: string): string | null => {
-    if (!url || typeof url !== "string") {
-      return "URL is required";
-    }
-
-    const trimmedUrl = url.trim();
-
-    if (trimmedUrl.length === 0) {
-      return "URL cannot be empty";
-    }
-
-    // Try to parse as-is first
-    try {
-      const urlObj = new URL(trimmedUrl);
-      // Ensure it's http or https
-      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
-        return "URL must use http:// or https:// protocol";
-      }
-      return null; // Valid URL
-    } catch {
-      // If parsing fails, try adding https://
-      try {
-        const urlWithProtocol = `https://${trimmedUrl}`;
-        const urlObj = new URL(urlWithProtocol);
-        // Validate it's a valid domain format
-        if (!urlObj.hostname || urlObj.hostname.length === 0) {
-          return "Invalid URL format";
-        }
-        // Check for basic domain pattern (at least one dot or localhost)
-        if (
-          !urlObj.hostname.includes(".") &&
-          urlObj.hostname !== "localhost" &&
-          !urlObj.hostname.match(/^\[.*\]$/) // IPv6
-        ) {
-          return "Invalid domain format";
-        }
-        return null; // Valid URL (will be normalized)
-      } catch {
-        return "Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)";
-      }
-    }
-  };
 
   const handleUrlChange = (value: string) => {
     // Store the base URL without UTM parameters
@@ -174,166 +113,43 @@ export const EditLinkModal = ({ isOpen, onClose, link }: EditLinkModalProps) => 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 py-4">
               {/* Left Column - Main Form */}
               <div className="space-y-6">
-                {/* Destination URL */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="longUrl" className="text-sm font-medium">
-                      Destination URL
-                    </Label>
-                    <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                  <Input
-                    id="longUrl"
-                    name="longUrl"
-                    value={longUrl}
-                    onChange={(e) => handleUrlChange(e.target.value)}
-                    placeholder="https://example.com/very-long-path"
-                    required
-                    className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
-                  />
-                  {urlError && <p className="text-sm text-red-600">{urlError}</p>}
-                </div>
-
-                {/* Tags */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-sm font-medium">Tags</Label>
-                    <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                  <TagsInput
-                    value={tags}
-                    onChange={setTags}
-                    availableTags={availableTags}
-                    label=""
-                    maxTags={currentPlan === "free" ? 5 : undefined}
-                  />
-                  {currentPlan === "free" && (
-                    <p className="text-xs text-slate-500">
-                      {tags.length}/5 tags {tags.length >= 5 && "(Limit reached)"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Short Link */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="shortCode" className="text-sm font-medium">
-                      Short Link
-                    </Label>
-                    <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-l-md text-sm text-slate-600">
-                      {hostname}
-                    </div>
-                    <Input
-                      id="shortCode"
-                      name="shortCode"
-                      value={link.shortCode}
-                      readOnly
-                      className="rounded-l-none bg-slate-50 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500">Short link cannot be changed</p>
-                </div>
+                <LinkFormFields
+                  linkType="standard"
+                  longUrl={longUrl}
+                  urlError={urlError}
+                  tags={tags}
+                  availableTags={availableTags}
+                  hostname={hostname}
+                  currentPlan={currentPlan}
+                  shortCode={link.shortCode}
+                  shortCodeReadOnly={true}
+                  onUrlChange={handleUrlChange}
+                  onTagsChange={setTags}
+                />
 
                 {/* Social Preview Fields */}
                 {showSocial && (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="grid gap-3">
-                      <div className="grid gap-2">
-                        <Label htmlFor="title" className="text-xs">
-                          Title
-                        </Label>
-                        <Input
-                          id="title"
-                          name="title"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Add a title..."
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="description" className="text-xs">
-                          Description
-                        </Label>
-                        <Input
-                          id="description"
-                          name="description"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="Add a description..."
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="imageUrl" className="text-xs">
-                          Image URL
-                        </Label>
-                        <Input
-                          id="imageUrl"
-                          name="imageUrl"
-                          value={imageUrl}
-                          onChange={(e) => setImageUrl(e.target.value)}
-                          placeholder="https://example.com/image.jpg"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <SocialPreviewSection
+                    title={title}
+                    description={description}
+                    imageUrl={imageUrl}
+                    onTitleChange={setTitle}
+                    onDescriptionChange={setDescription}
+                    onImageUrlChange={setImageUrl}
+                  />
                 )}
               </div>
 
               {/* Right Column - Previews */}
-              <div className="hidden lg:block space-y-4 sticky top-0">
-                {/* QR Code Preview */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-slate-600">QR Code</Label>
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center min-h-[160px]">
-                    {longUrl ? (
-                      <QRCodeCanvas value={longUrl || "https://example.com"} size={100} level="H" />
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <QrCode className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">Enter a URL to generate QR code</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Link Preview */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-slate-600">Link Preview</Label>
-                    <Switch checked={showSocial} onCheckedChange={setShowSocial} />
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                      {imageUrl ? (
-                        <Image
-                          src={imageUrl}
-                          alt="Preview"
-                          width={300}
-                          height={120}
-                          className="w-full h-24 object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-24 bg-slate-100 flex items-center justify-center">
-                          <QrCode className="h-8 w-8 text-slate-300" />
-                        </div>
-                      )}
-                      <div className="p-3 bg-[#f0f2f5]">
-                        <p className="text-[#000000] font-semibold text-sm truncate">
-                          {title || "Your Link Title"}
-                        </p>
-                        <p className="text-[#667781] text-xs line-clamp-1">
-                          {description || "Shared via BharatLinks"}
-                        </p>
-                        <p className="text-[#667781] text-[10px] mt-0.5">BHARATLINKS.IN</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LinkPreviewSection
+                longUrl={longUrl}
+                linkType="standard"
+                showSocial={showSocial}
+                title={title}
+                description={description}
+                imageUrl={imageUrl}
+                onShowSocialChange={setShowSocial}
+              />
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">

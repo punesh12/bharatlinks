@@ -14,6 +14,8 @@ import { db } from "@/db";
 import { workspaceMembers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 
 const DashboardLayout = async ({
   children,
@@ -76,7 +78,9 @@ const DashboardLayout = async ({
 
           {/* Plan Usage */}
           <div className="border-t p-4">
-            <PlanUsage workspaceId={workspaceId} />
+            <Suspense fallback={<div className="h-32 animate-pulse bg-slate-100 rounded-lg" />}>
+              <PlanUsage workspaceId={workspaceId} />
+            </Suspense>
           </div>
         </div>
       </aside>
@@ -118,7 +122,9 @@ const DashboardLayout = async ({
 
                 {/* Plan Usage */}
                 <div className="border-t p-4">
-                  <PlanUsage workspaceId={workspaceId} />
+                  <Suspense fallback={<div className="h-32 animate-pulse bg-slate-100 rounded-lg" />}>
+                    <PlanUsage workspaceId={workspaceId} />
+                  </Suspense>
                 </div>
               </div>
             </SheetContent>
@@ -129,7 +135,7 @@ const DashboardLayout = async ({
           </div>
         </header>
         <main className="flex-1 pl-2 pr-2 lg:pr-8 pt-2 pb-2 lg:pt-8 lg:pb-8 bg-slate-50/30 w-full overflow-x-hidden">
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
     </div>

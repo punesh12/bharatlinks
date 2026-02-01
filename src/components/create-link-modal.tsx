@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,29 +11,34 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { createLink, getAllTags } from "@/lib/actions/links";
+import { createLink } from "@/lib/actions/links";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   Download,
   Copy,
   Check,
-  QrCode,
   IndianRupee,
   Link as LinkIcon,
-  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
-import { Share2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Image from "next/image";
-import { TagsInput } from "@/components/ui/tags-input";
-import { UpgradeModal } from "@/components/upgrade-modal";
-import { getUserPlan, getRemainingLinks } from "@/lib/utils/plans";
-import { type PlanTier } from "@/lib/plans";
-import { UtmModal } from "@/components/utm-modal";
+import { validateUrl } from "@/lib/utils/url-validation";
+import dynamic from "next/dynamic";
+import { buildUrlWithUtm } from "@/lib/utils/url";
+import { LinkFormFields } from "./links/link-form-fields";
+import { SocialPreviewSection } from "./links/social-preview-section";
+import { LinkPreviewSection } from "./links/link-preview-section";
+import { LinkFormActions } from "./links/link-form-actions";
+import { useHostname } from "@/hooks/use-hostname";
+import { useLinkFormData } from "@/hooks/use-link-form-data";
+
+// Lazy load rarely used modals
+const UpgradeModal = dynamic(() => import("@/components/upgrade-modal").then((m) => m.UpgradeModal), {
+  ssr: false,
+});
+const UtmModal = dynamic(() => import("@/components/utm-modal").then((m) => m.UtmModal), {
+  ssr: false,
+});
 
 type UtmTemplate = {
   id: string;
@@ -50,61 +55,37 @@ export const CreateLinkModal = ({
   workspaceId: string;
   templates: UtmTemplate[];
 }) => {
-  const [open, setOpen] = React.useState(false);
-  const [source, setSource] = React.useState("");
-  const [medium, setMedium] = React.useState("");
-  const [campaign, setCampaign] = React.useState("");
-  const [term, setTerm] = React.useState("");
-  const [content, setContent] = React.useState("");
-  const [referral, setReferral] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [successData, setSuccessData] = React.useState<{
+  const [open, setOpen] = useState(false);
+  const [source, setSource] = useState("");
+  const [medium, setMedium] = useState("");
+  const [campaign, setCampaign] = useState("");
+  const [term, setTerm] = useState("");
+  const [content, setContent] = useState("");
+  const [referral, setReferral] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successData, setSuccessData] = useState<{
     shortCode: string;
     fullUrl: string;
   } | null>(null);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Social Preview States
-  const [title, setTitle] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [imageUrl, setImageUrl] = React.useState("");
-  const [showSocial, setShowSocial] = React.useState(false);
-  const [linkType, setLinkType] = React.useState<"standard" | "upi">("standard");
-  const [tags, setTags] = React.useState<string[]>([]);
-  const [availableTags, setAvailableTags] = React.useState<{ id: string; name: string }[]>([]);
-  const [longUrl, setLongUrl] = React.useState("");
-  const [urlError, setUrlError] = React.useState<string | null>(null);
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
-  const [linkLimit, setLinkLimit] = React.useState<{
-    remaining: number | null;
-    used: number;
-    limit: number | null;
-  } | null>(null);
-  const [utmModalOpen, setUtmModalOpen] = React.useState(false);
-  const [hostname, setHostname] = React.useState("bharatlinks.in");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [showSocial, setShowSocial] = useState(false);
+  const [linkType, setLinkType] = useState<"standard" | "upi">("standard");
+  const [tags, setTags] = useState<string[]>([]);
+  const [longUrl, setLongUrl] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [utmModalOpen, setUtmModalOpen] = useState(false);
 
-  // Fetch available tags and plan info when modal opens
-  React.useEffect(() => {
-    if (open) {
-      getAllTags(workspaceId)
-        .then(setAvailableTags)
-        .catch(() => setAvailableTags([]));
-      // Fetch plan info
-      getUserPlan()
-        .then(setCurrentPlan)
-        .catch(() => setCurrentPlan("free"));
-      getRemainingLinks(workspaceId)
-        .then(setLinkLimit)
-        .catch(() => setLinkLimit(null));
-    }
-    // Set hostname on client side only to avoid hydration mismatch
-    if (typeof window !== "undefined") {
-      setHostname(window.location.hostname);
-    }
-  }, [open, workspaceId]);
+  // Custom hooks
+  const hostname = useHostname();
+  const { availableTags, currentPlan, linkUsage } = useLinkFormData(workspaceId, open);
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     if (!successData) return;
     try {
       await navigator.clipboard.writeText(successData.fullUrl);
@@ -114,9 +95,9 @@ export const CreateLinkModal = ({
     } catch {
       toast.error("Failed to copy");
     }
-  };
+  }, [successData]);
 
-  const downloadQRCode = () => {
+  const downloadQRCode = useCallback(() => {
     const canvas = document.querySelector("#new-qr-canvas") as HTMLCanvasElement;
     if (!canvas) return;
     const url = canvas.toDataURL("image/png");
@@ -124,9 +105,9 @@ export const CreateLinkModal = ({
     link.download = `qrcode-${successData?.shortCode}.png`;
     link.href = url;
     link.click();
-  };
+  }, [successData?.shortCode]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setSuccessData(null);
     setSource("");
     setMedium("");
@@ -142,53 +123,9 @@ export const CreateLinkModal = ({
     setShowSocial(false);
     setLongUrl("");
     setUrlError(null);
-  };
+  }, []);
 
-  // URL validation function
-  const validateUrl = (url: string): string | null => {
-    if (!url || typeof url !== "string") {
-      return "URL is required";
-    }
-
-    const trimmedUrl = url.trim();
-
-    if (trimmedUrl.length === 0) {
-      return "URL cannot be empty";
-    }
-
-    // Try to parse as-is first
-    try {
-      const urlObj = new URL(trimmedUrl);
-      // Ensure it's http or https
-      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
-        return "URL must use http:// or https:// protocol";
-      }
-      return null; // Valid URL
-    } catch {
-      // If parsing fails, try adding https://
-      try {
-        const urlWithProtocol = `https://${trimmedUrl}`;
-        const urlObj = new URL(urlWithProtocol);
-        // Validate it's a valid domain format
-        if (!urlObj.hostname || urlObj.hostname.length === 0) {
-          return "Invalid URL format";
-        }
-        // Check for basic domain pattern (at least one dot or localhost)
-        if (
-          !urlObj.hostname.includes(".") &&
-          urlObj.hostname !== "localhost" &&
-          !urlObj.hostname.match(/^\[.*\]$/) // IPv6
-        ) {
-          return "Invalid domain format";
-        }
-        return null; // Valid URL (will be normalized)
-      } catch {
-        return "Invalid URL format. Please enter a valid URL (e.g., https://example.com or example.com)";
-      }
-    }
-  };
-
-  const handleUrlChange = (value: string) => {
+  const handleUrlChange = useCallback((value: string) => {
     // Store the base URL without UTM parameters
     const baseUrl = value.split("?")[0];
     setLongUrl(baseUrl);
@@ -198,35 +135,23 @@ export const CreateLinkModal = ({
     } else {
       setUrlError(null);
     }
-  };
-
-  // Function to build URL with UTM parameters
-  const buildUrlWithUtm = (baseUrl: string): string => {
-    if (!baseUrl || !baseUrl.trim()) return baseUrl;
-
-    const params: string[] = [];
-    if (source) params.push(`utm_source=${encodeURIComponent(source).replace(/%20/g, "+")}`);
-    if (medium) params.push(`utm_medium=${encodeURIComponent(medium).replace(/%20/g, "+")}`);
-    if (campaign) params.push(`utm_campaign=${encodeURIComponent(campaign).replace(/%20/g, "+")}`);
-    if (term) params.push(`utm_term=${encodeURIComponent(term).replace(/%20/g, "+")}`);
-    if (content) params.push(`utm_content=${encodeURIComponent(content).replace(/%20/g, "+")}`);
-    if (referral) params.push(`ref=${encodeURIComponent(referral).replace(/%20/g, "+")}`);
-
-    if (params.length === 0) return baseUrl;
-
-    // Remove existing query string if present
-    const urlWithoutParams = baseUrl.split("?")[0];
-    return `${urlWithoutParams}?${params.join("&")}`;
-  };
+  }, []);
 
   // Handle UTM modal close - append UTM params to destination URL
-  const handleUtmModalClose = () => {
+  const handleUtmModalClose = useCallback(() => {
     if (longUrl && linkType === "standard") {
-      const urlWithUtm = buildUrlWithUtm(longUrl);
+      const urlWithUtm = buildUrlWithUtm(longUrl, {
+        source,
+        medium,
+        campaign,
+        term,
+        content,
+        referral,
+      });
       setLongUrl(urlWithUtm);
     }
     setUtmModalOpen(false);
-  };
+  }, [longUrl, linkType, source, medium, campaign, term, content, referral]);
 
   return (
     <>
@@ -235,12 +160,12 @@ export const CreateLinkModal = ({
         onClose={() => setUpgradeOpen(false)}
         currentPlan={currentPlan}
         reason={
-          linkLimit?.limit && linkLimit.remaining === 0
-            ? `You've reached your monthly limit of ${linkLimit.limit} links. Upgrade to create more.`
+          linkUsage?.limit && linkUsage.remaining === 0
+            ? `You've reached your monthly limit of ${linkUsage.limit} links. Upgrade to create more.`
             : undefined
         }
-        limit={linkLimit?.limit || undefined}
-        currentCount={linkLimit?.used}
+        limit={linkUsage?.limit || undefined}
+        currentCount={linkUsage?.used}
       />
       <UtmModal
         isOpen={utmModalOpen}
@@ -352,8 +277,8 @@ export const CreateLinkModal = ({
                   if (errorMessage.includes("limit") || errorMessage.includes("Plan limit")) {
                     // Extract limit info from error message for better modal display
                     const limitMatch = errorMessage.match(/(\d+)\s*links/);
-                    if (limitMatch && linkLimit) {
-                      // Modal will use linkLimit state which is already set
+                    if (limitMatch && linkUsage) {
+                      // Modal will use linkUsage state which is already set
                     }
                     setUpgradeOpen(true);
                     toast.error(errorMessage);
@@ -401,250 +326,59 @@ export const CreateLinkModal = ({
                     <input type="hidden" name="utm_content" value={content} />
                     <input type="hidden" name="ref" value={referral} />
 
-                    {/* Destination URL */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <Label htmlFor="longUrl" className="text-sm font-medium">
-                          {linkType === "standard" ? "Destination URL" : "Payment Details"}
-                        </Label>
-                        <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                      </div>
-
-                      {linkType === "standard" ? (
-                        <Input
-                          id="longUrl"
-                          name="longUrl"
-                          value={longUrl}
-                          onChange={(e) => handleUrlChange(e.target.value)}
-                          placeholder="https://example.com/very-long-path"
-                          required
-                          className={urlError ? "border-red-500 focus-visible:ring-red-500" : ""}
-                          title={longUrl.includes("?") ? longUrl : undefined}
-                        />
-                      ) : (
-                        <div className="grid gap-3">
-                          <input
-                            type="hidden"
-                            name="longUrl"
-                            value="https://bharatlinks.in/upi-redirect"
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="grid gap-2">
-                              <Label htmlFor="upiVpa" className="text-xs">
-                                UPI ID (VPA)
-                              </Label>
-                              <Input
-                                id="upiVpa"
-                                name="upiVpa"
-                                placeholder="punesh@okaxis"
-                                required
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor="upiName" className="text-xs">
-                                Merchant Name
-                              </Label>
-                              <Input id="upiName" name="upiName" placeholder="Punesh Borkar" />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="grid gap-2">
-                              <Label htmlFor="upiAmount" className="text-xs">
-                                Amount (Optional)
-                              </Label>
-                              <Input
-                                id="upiAmount"
-                                name="upiAmount"
-                                type="number"
-                                placeholder="500"
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor="upiNote" className="text-xs">
-                                Payment Note
-                              </Label>
-                              <Input id="upiNote" name="upiNote" placeholder="Dinner Bill" />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {urlError && <p className="text-sm text-red-600">{urlError}</p>}
-                    </div>
-
-                    {/* Tags */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <Label className="text-sm font-medium">Tags</Label>
-                        <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                      </div>
-                      <TagsInput
-                        value={tags}
-                        onChange={setTags}
-                        availableTags={availableTags}
-                        label=""
-                        maxTags={currentPlan === "free" ? 5 : undefined}
-                      />
-                    </div>
-
-                    {/* Short Link */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <Label htmlFor="shortCode" className="text-sm font-medium">
-                          Short Link
-                        </Label>
-                        <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-l-md text-sm text-slate-600">
-                          {hostname}
-                        </div>
-                        <Input
-                          id="shortCode"
-                          name="shortCode"
-                          placeholder="diwali-sale"
-                          className="rounded-l-none"
-                        />
-                      </div>
-                      <p className="text-xs text-slate-500">Leave empty for auto-generated code</p>
-                    </div>
+                    <LinkFormFields
+                      linkType={linkType}
+                      longUrl={longUrl}
+                      urlError={urlError}
+                      tags={tags}
+                      availableTags={availableTags}
+                      hostname={hostname}
+                      currentPlan={currentPlan}
+                      onUrlChange={handleUrlChange}
+                      onTagsChange={setTags}
+                    />
 
                     {/* Social Preview Fields */}
                     {showSocial && (
-                      <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="grid gap-3">
-                          <div className="grid gap-2">
-                            <Label htmlFor="title" className="text-xs">
-                              Title
-                            </Label>
-                            <Input
-                              id="title"
-                              name="title"
-                              value={title}
-                              onChange={(e) => setTitle(e.target.value)}
-                              placeholder="Add a title..."
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="description" className="text-xs">
-                              Description
-                            </Label>
-                            <Input
-                              id="description"
-                              name="description"
-                              value={description}
-                              onChange={(e) => setDescription(e.target.value)}
-                              placeholder="Add a description..."
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="imageUrl" className="text-xs">
-                              Image URL
-                            </Label>
-                            <Input
-                              id="imageUrl"
-                              name="imageUrl"
-                              value={imageUrl}
-                              onChange={(e) => setImageUrl(e.target.value)}
-                              placeholder="https://example.com/image.jpg"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <SocialPreviewSection
+                        title={title}
+                        description={description}
+                        imageUrl={imageUrl}
+                        onTitleChange={setTitle}
+                        onDescriptionChange={setDescription}
+                        onImageUrlChange={setImageUrl}
+                      />
                     )}
                   </div>
 
                   {/* Right Column - Previews */}
-                  <div className="hidden lg:block space-y-4 sticky top-0">
-                    {/* QR Code Preview */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-slate-600">QR Code</Label>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center min-h-[120px]">
-                        {longUrl || linkType === "upi" ? (
-                          <QRCodeCanvas
-                            value={
-                              linkType === "upi"
-                                ? "upi://pay?pa=example@bank&pn=Merchant&am=100&cu=INR"
-                                : longUrl || "https://example.com"
-                            }
-                            size={100}
-                            level="H"
-                          />
-                        ) : (
-                          <div className="text-center text-slate-400">
-                            <QrCode className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                            <p className="text-xs">Enter a URL to generate QR code</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Link Preview */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-medium text-slate-600">Link Preview</Label>
-                        <Switch checked={showSocial} onCheckedChange={setShowSocial} />
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                          {imageUrl ? (
-                            <Image
-                              src={imageUrl}
-                              alt="Preview"
-                              width={300}
-                              height={120}
-                              className="w-full h-24 object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-full h-24 bg-slate-100 flex items-center justify-center">
-                              <QrCode className="h-8 w-8 text-slate-300" />
-                            </div>
-                          )}
-                          <div className="p-3 bg-[#f0f2f5]">
-                            <p className="text-[#000000] font-semibold text-sm truncate">
-                              {title || "Your Link Title"}
-                            </p>
-                            <p className="text-[#667781] text-xs line-clamp-1">
-                              {description || "Shared via BharatLinks"}
-                            </p>
-                            <p className="text-[#667781] text-[10px] mt-0.5">BHARATLINKS.IN</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <LinkPreviewSection
+                    longUrl={longUrl}
+                    linkType={linkType}
+                    showSocial={showSocial}
+                    title={title}
+                    description={description}
+                    imageUrl={imageUrl}
+                    onShowSocialChange={setShowSocial}
+                  />
                 </div>
               </div>
               <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
-                <div className="flex items-center gap-2 w-full">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setUtmModalOpen(true)}
-                    disabled={linkType !== "standard" || !longUrl || !!urlError}
-                    className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    UTM
-                    {(source || medium || campaign || term || content || referral) && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        {(source ? 1 : 0) +
-                          (medium ? 1 : 0) +
-                          (campaign ? 1 : 0) +
-                          (term ? 1 : 0) +
-                          (content ? 1 : 0) +
-                          (referral ? 1 : 0)}
-                      </span>
-                    )}
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Creating..." : "Create Link"}
-                  </Button>
-                </div>
+                <LinkFormActions
+                  linkType={linkType}
+                  longUrl={longUrl}
+                  urlError={urlError}
+                  utmParamsCount={
+                    (source ? 1 : 0) +
+                    (medium ? 1 : 0) +
+                    (campaign ? 1 : 0) +
+                    (term ? 1 : 0) +
+                    (content ? 1 : 0) +
+                    (referral ? 1 : 0)
+                  }
+                  isSubmitting={isSubmitting}
+                  onUtmClick={() => setUtmModalOpen(true)}
+                />
               </DialogFooter>
             </form>
           )}

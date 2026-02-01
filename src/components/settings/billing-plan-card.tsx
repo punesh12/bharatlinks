@@ -7,6 +7,7 @@ import { type PlanTier, type PlanConfig } from "@/lib/plans";
 import { Check, Crown, Zap, Building2 } from "lucide-react";
 import { UpgradeButton } from "@/components/settings/upgrade-button";
 import { cn } from "@/lib/utils";
+import { memo, useMemo } from "react";
 
 interface BillingPlanCardProps {
   tier: PlanTier;
@@ -30,18 +31,20 @@ const getPlanIcon = (tier: PlanTier) => {
   }
 };
 
-export function BillingPlanCard({
+const BillingPlanCardComponent = ({
   tier,
   plan,
   isCurrentPlan,
   isRecommended,
   currentPlan,
   billingPeriod = "monthly",
-}: BillingPlanCardProps) {
+}: BillingPlanCardProps) => {
   const monthlyPrice = plan.price.monthly;
   const yearlyPrice = plan.price.yearly;
-  const pricePerMonth =
-    billingPeriod === "yearly" && yearlyPrice > 0 ? Math.round(yearlyPrice / 12) : monthlyPrice;
+  const pricePerMonth = useMemo(
+    () => (billingPeriod === "yearly" && yearlyPrice > 0 ? Math.round(yearlyPrice / 12) : monthlyPrice),
+    [billingPeriod, yearlyPrice, monthlyPrice]
+  );
   return (
     <Card
       className={cn(
@@ -155,4 +158,19 @@ export function BillingPlanCard({
       </CardContent>
     </Card>
   );
-}
+};
+
+// Memoize BillingPlanCard to prevent unnecessary re-renders when switching tabs
+export const BillingPlanCard = memo(BillingPlanCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.tier === nextProps.tier &&
+    prevProps.isCurrentPlan === nextProps.isCurrentPlan &&
+    prevProps.isRecommended === nextProps.isRecommended &&
+    prevProps.currentPlan === nextProps.currentPlan &&
+    prevProps.billingPeriod === nextProps.billingPeriod &&
+    prevProps.plan.name === nextProps.plan.name &&
+    prevProps.plan.price.monthly === nextProps.plan.price.monthly &&
+    prevProps.plan.price.yearly === nextProps.plan.price.yearly &&
+    JSON.stringify(prevProps.plan.features) === JSON.stringify(nextProps.plan.features)
+  );
+});

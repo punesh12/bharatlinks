@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,13 @@ import { updateWorkspace } from "@/lib/actions/team";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
-import { DeleteWorkspaceModal } from "./delete-workspace-modal";
+import dynamic from "next/dynamic";
+
+// Lazy load rarely used modal
+const DeleteWorkspaceModal = dynamic(
+  () => import("@/components/settings/delete-workspace-modal").then((m) => m.DeleteWorkspaceModal),
+  { ssr: false }
+);
 
 interface WorkspaceEditFormProps {
   workspaceId: string;
@@ -17,10 +23,10 @@ interface WorkspaceEditFormProps {
 
 export function WorkspaceEditForm({ workspaceId, currentName }: WorkspaceEditFormProps) {
   const router = useRouter();
-  const [name, setName] = React.useState(currentName);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
+  const [name, setName] = useState(currentName);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim() || name.trim() === currentName) {

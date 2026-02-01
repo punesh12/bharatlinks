@@ -1,34 +1,44 @@
 "use client";
 
-import * as React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, Suspense, useTransition } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLANS, type PlanTier, getUpgradeSuggestion } from "@/lib/plans";
 import { PlanBadge } from "@/components/plan-badge";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-import { UsageDetailsModal } from "@/components/settings/usage-details-modal";
+import { formatDate, getNextBillingDate } from "@/lib/utils/date";
 import { getUserPlan, getRemainingLinks } from "@/lib/utils/plans";
+import dynamic from "next/dynamic";
+
+// Lazy load rarely used modal
+const UsageDetailsModal = dynamic(
+  () => import("@/components/settings/usage-details-modal").then((m) => m.UsageDetailsModal),
+  { ssr: false }
+);
 import { useParams } from "next/navigation";
 import { UpgradeButton } from "@/components/settings/upgrade-button";
 import { BillingPlanCard } from "@/components/settings/billing-plan-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PaymentMethod } from "@/components/settings/payment-method";
+import { BillingHistory } from "@/components/settings/billing-history";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
+
 
 const BillingPage = () => {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
-  const [currentPlan, setCurrentPlan] = React.useState<PlanTier>("free");
-  const [linkUsage, setLinkUsage] = React.useState<{
+  const [, startTransition] = useTransition();
+  const [currentPlan, setCurrentPlan] = useState<PlanTier>("free");
+  const [linkUsage, setLinkUsage] = useState<{
     remaining: number | null;
     used: number;
     limit: number | null;
   } | null>(null);
-  const [usageModalOpen, setUsageModalOpen] = React.useState(false);
-  const [billingPeriod, setBillingPeriod] = React.useState<"monthly" | "yearly">("monthly");
+  const [usageModalOpen, setUsageModalOpen] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
 
-  React.useEffect(() => {
+  useEffect(() => {
     getUserPlan()
       .then(setCurrentPlan)
       .catch(() => setCurrentPlan("free"));
@@ -37,26 +47,26 @@ const BillingPage = () => {
       .catch(() => setLinkUsage(null));
   }, [workspaceId]);
 
-  if (!linkUsage) {
-    return <div>Loading...</div>;
-  }
-
   const planConfig = PLANS[currentPlan];
   const upgradeSuggestion = getUpgradeSuggestion(currentPlan, "links");
 
-  const getNextBillingDate = (): Date => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  };
-
   const getProgressColor = () => {
-    if (!linkUsage.limit) return "bg-blue-600";
+    if (!linkUsage?.limit) return "bg-blue-600";
     const usagePercent = (linkUsage.used / linkUsage.limit) * 100;
     if (usagePercent >= 90) return "bg-red-500";
     if (usagePercent >= 75) return "bg-orange-500";
     if (usagePercent >= 50) return "bg-yellow-500";
     return "bg-green-500";
   };
+
+  if (!linkUsage) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-48 animate-pulse bg-slate-200 rounded" />
+        <div className="h-64 animate-pulse bg-slate-100 rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -67,7 +77,8 @@ const BillingPage = () => {
         planFeatures={planConfig.features}
         planName={planConfig.name}
       />
-      <div className="space-y-6">
+      <ErrorBoundary>
+        <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -88,7 +99,7 @@ const BillingPage = () => {
               </div>
               {currentPlan !== "free" && (
                 <Badge variant="outline" className="text-xs w-fit">
-                  Next billing: {format(getNextBillingDate(), "MMM d, yyyy")}
+                  Next billing: {formatDate(getNextBillingDate())}
                 </Badge>
               )}
             </div>
@@ -172,11 +183,15 @@ const BillingPage = () => {
               </div>
               {/* Billing Period Toggle */}
               <div className="flex items-center">
-                <Tabs
-                  value={billingPeriod}
-                  onValueChange={(v) => setBillingPeriod(v as "monthly" | "yearly")}
-                  className="w-auto"
-                >
+              <Tabs
+                value={billingPeriod}
+                onValueChange={(v) => {
+                  startTransition(() => {
+                    setBillingPeriod(v as "monthly" | "yearly");
+                  });
+                }}
+                className="w-auto"
+              >
                   <TabsList className="inline-flex h-10 bg-slate-100 p-1 rounded-lg w-auto">
                     <TabsTrigger
                       value="monthly"
@@ -219,63 +234,19 @@ const BillingPage = () => {
 
         {/* Payment Method */}
         {currentPlan !== "free" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
-              <CardDescription>Manage your payment information.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border border-slate-200 rounded-lg bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-8 bg-gradient-to-br from-slate-300 to-slate-400 rounded flex items-center justify-center shadow-sm">
-                    <span className="text-xs font-bold text-white">••••</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Card ending in •••• 4242</p>
-                    <p className="text-xs text-slate-600 mt-0.5">Expires 12/25</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                  Update Payment Method
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <Suspense fallback={<div className="h-48 animate-pulse bg-slate-100 rounded-lg" />}>
+            <PaymentMethod />
+          </Suspense>
         )}
 
         {/* Billing History */}
         {currentPlan !== "free" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing History</CardTitle>
-              <CardDescription>View your past invoices and payments.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 mb-3">
-                  <svg
-                    className="w-6 h-6 text-slate-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-900 mb-1">No billing history</p>
-                <p className="text-xs text-slate-500">
-                  Your invoices will appear here once you make your first payment.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <Suspense fallback={<div className="h-48 animate-pulse bg-slate-100 rounded-lg" />}>
+            <BillingHistory />
+          </Suspense>
         )}
-      </div>
+        </div>
+      </ErrorBoundary>
     </>
   );
 };

@@ -78,6 +78,7 @@ Visit `http://localhost:3000`.
 
 - [MVP Implementation Plan](./docs/mvp_implementation_plan.md)
 - [Redis Caching Guide](./docs/redis_caching.md)
+- [Deployment Guide & Cost Analysis](./docs/deployment_guide.md)
 - [Tech Stack](./docs/tech_stack.md)
 - [Product Roadmap](./docs/product_roadmap.md)
 - [Business Model](./docs/business_model.md)

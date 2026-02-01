@@ -31,9 +31,9 @@ const CityList = dynamic(() =>
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getAnalyticsData } from "@/lib/services/analytics";
+import { Suspense } from "react";
 
-const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string }> }) => {
-  const { workspaceId } = await params;
+const AnalyticsContent = async ({ workspaceId }: { workspaceId: string }) => {
   const {
     stats,
     trendData,
@@ -48,15 +48,7 @@ const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string
   } = await getAnalyticsData(workspaceId);
 
   return (
-    <div className="space-y-6 w-full pb-8">
-      {/* Header */}
-      <div className="flex flex-col gap-1 mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Workspace Analytics</h1>
-        <p className="text-sm text-slate-600">
-          Deep dive into your link performance and global audience.
-        </p>
-      </div>
-
+    <>
       {/* Overview Stats */}
       <div className="grid gap-4 md:grid-cols-2">
         <StatCard
@@ -76,30 +68,46 @@ const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string
 
       {/* Main Trend & Device Row */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-        <ClickTrendChart data={trendData} />
-        <DeviceBreakdown
-          data={deviceData.length > 0 ? deviceData : [{ name: "No data", value: 1 }]}
-        />
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <ClickTrendChart data={trendData} />
+        </Suspense>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <DeviceBreakdown
+            data={deviceData.length > 0 ? deviceData : [{ name: "No data", value: 1 }]}
+          />
+        </Suspense>
       </div>
 
       {/* Geographic Row - Continents, Countries, Cities */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-        <ContinentBreakdown
-          data={continentData.length > 0 ? continentData : [{ name: "No data", value: 1 }]}
-        />
-        <CountryBreakdown
-          data={countryData.length > 0 ? countryData : [{ name: "No data", value: 1 }]}
-        />
-        <CityList data={cityData} />
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <ContinentBreakdown
+            data={continentData.length > 0 ? continentData : [{ name: "No data", value: 1 }]}
+          />
+        </Suspense>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <CountryBreakdown
+            data={countryData.length > 0 ? countryData : [{ name: "No data", value: 1 }]}
+          />
+        </Suspense>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <CityList data={cityData} />
+        </Suspense>
       </div>
 
       {/* Tech Breakdown Row - Browser, OS, Referrers */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-        <BrowserBreakdown
-          data={browserData.length > 0 ? browserData : [{ name: "No data", value: 1 }]}
-        />
-        <OSBreakdown data={osData.length > 0 ? osData : [{ name: "No data", value: 1 }]} />
-        <ReferrerList data={referrerData} />
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <BrowserBreakdown
+            data={browserData.length > 0 ? browserData : [{ name: "No data", value: 1 }]}
+          />
+        </Suspense>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <OSBreakdown data={osData.length > 0 ? osData : [{ name: "No data", value: 1 }]} />
+        </Suspense>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <ReferrerList data={referrerData} />
+        </Suspense>
       </div>
 
       {/* Top Links */}
@@ -152,6 +160,40 @@ const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string
           </div>
         </CardContent>
       </Card>
+    </>
+  );
+};
+
+const AnalyticsPage = async ({ params }: { params: Promise<{ workspaceId: string }> }) => {
+  const { workspaceId } = await params;
+
+  return (
+    <div className="space-y-6 w-full pb-8">
+      {/* Header */}
+      <div className="flex flex-col gap-1 mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Workspace Analytics</h1>
+        <p className="text-sm text-slate-600">
+          Deep dive into your link performance and global audience.
+        </p>
+      </div>
+
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="h-24 animate-pulse bg-slate-100 rounded-lg" />
+              <div className="h-24 animate-pulse bg-slate-100 rounded-lg" />
+            </div>
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-64 animate-pulse bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <AnalyticsContent workspaceId={workspaceId} />
+      </Suspense>
     </div>
   );
 };

@@ -10,23 +10,32 @@ interface SettingsLayoutProps {
   params: Promise<{ workspaceId: string }>;
 }
 
-const settingsNavItems = [
+type SettingsNavIcon = "settings" | "users" | "creditCard";
+
+interface SettingsNavItem {
+  href: (workspaceId: string) => string;
+  label: string;
+  icon: SettingsNavIcon;
+  exact: boolean;
+}
+
+const settingsNavItems: SettingsNavItem[] = [
   {
     href: (workspaceId: string) => `/app/${workspaceId}/settings`,
     label: "General",
-    icon: "settings",
+    icon: "settings" as const,
     exact: true, // Only match exact path
   },
   {
     href: (workspaceId: string) => `/app/${workspaceId}/settings/team`,
     label: "Team",
-    icon: "users",
+    icon: "users" as const,
     exact: false, // Match path and sub-paths
   },
   {
     href: (workspaceId: string) => `/app/${workspaceId}/settings/billing`,
     label: "Billing",
-    icon: "creditCard",
+    icon: "creditCard" as const,
     exact: false, // Match path and sub-paths
   },
 ];

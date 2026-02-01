@@ -1,10 +1,12 @@
 import { TeamManagement } from "@/components/settings/team-management";
 import { ActivityLogs } from "@/components/settings/activity-logs";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { workspaceMembers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { canAddTeamMember } from "@/lib/utils/plans";
+import { Suspense } from "react";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 
 const TeamPage = async ({ params }: { params: Promise<{ workspaceId: string }> }) => {
   const { workspaceId } = await params;
@@ -44,14 +46,22 @@ const TeamPage = async ({ params }: { params: Promise<{ workspaceId: string }> }
         </p>
       </div>
 
-      <TeamManagement
-        workspaceId={workspaceId}
-        currentUserId={userId}
-        isOwner={isOwner}
-        limitCheck={limitCheck}
-      />
+      <ErrorBoundary>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <TeamManagement
+            workspaceId={workspaceId}
+            currentUserId={userId}
+            isOwner={isOwner}
+            limitCheck={limitCheck}
+          />
+        </Suspense>
+      </ErrorBoundary>
 
-      <ActivityLogs workspaceId={workspaceId} />
+      <ErrorBoundary>
+        <Suspense fallback={<div className="h-64 animate-pulse bg-slate-100 rounded-lg" />}>
+          <ActivityLogs workspaceId={workspaceId} />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 };

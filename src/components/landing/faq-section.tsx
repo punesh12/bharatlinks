@@ -114,7 +114,7 @@ export function FAQSection() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-slate-600 mb-4">Still have questions? We're here to help.</p>
+          <p className="text-sm text-slate-600 mb-4">Still have questions? We&apos;re here to help.</p>
           <a
             href="mailto:support@bharatlinks.in"
             className="text-blue-600 hover:text-blue-700 font-medium text-sm"

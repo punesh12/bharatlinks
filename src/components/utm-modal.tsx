@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,13 +59,19 @@ export const UtmModal = ({
   onContentChange,
   onReferralChange,
 }: UtmModalProps) => {
-  const [localTerm, setLocalTerm] = React.useState(term);
-  const [localContent, setLocalContent] = React.useState(content);
-  const [localReferral, setLocalReferral] = React.useState(referral);
+  // Sync props to local state only when they actually change
+  const [localTerm, setLocalTerm] = useState(term);
+  const [localContent, setLocalContent] = useState(content);
+  const [localReferral, setLocalReferral] = useState(referral);
 
-  React.useEffect(() => {
+  // Update local state when props change (for controlled component pattern)
+  // This pattern syncs external props to local state, which is necessary for controlled components
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing props to local state for controlled component
     setLocalTerm(term);
+     
     setLocalContent(content);
+     
     setLocalReferral(referral);
   }, [term, content, referral]);
 

@@ -1,28 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { format } from "date-fns";
-import {
-  Link2,
-  Calendar,
-  MousePointerClick,
-  MoreVertical,
-  ExternalLink,
-  QrCode,
-  Settings2,
-  Trash2,
-} from "lucide-react";
+import { formatDate } from "@/lib/utils/date";
+import { Link2, Calendar, MousePointerClick } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/shared/copy-button";
+import { LinkCardMenu } from "./link-card-menu";
 
 const QRCodeModal = dynamic(() => import("./qr-code-modal").then((m) => m.QRCodeModal), {
   ssr: false,
@@ -49,15 +34,17 @@ interface LinkCardProps {
   };
 }
 
-export const LinkCard = ({ link }: LinkCardProps) => {
+const LinkCardComponent = ({ link }: LinkCardProps) => {
   const [qrOpen, setQrOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // Ensure consistent date formatting to avoid hydration mismatch
-  const createdAtDate =
-    typeof link.createdAt === "string" ? new Date(link.createdAt) : link.createdAt;
-  const formattedDate = format(createdAtDate, "MMM d, yyyy");
+  // Ensure consistent date formatting to avoid hydration mismatch - memoized
+  const formattedDate = useMemo(() => {
+    const createdAtDate =
+      typeof link.createdAt === "string" ? new Date(link.createdAt) : link.createdAt;
+    return formatDate(createdAtDate);
+  }, [link.createdAt]);
 
   // Compute full URL using useMemo to avoid hydration mismatch
   const fullShortUrl = useMemo(() => {
@@ -81,6 +68,23 @@ export const LinkCard = ({ link }: LinkCardProps) => {
       return link.longUrl.length > 30 ? `${link.longUrl.substring(0, 30)}...` : link.longUrl;
     }
   }, [link.longUrl]);
+
+  // Memoize callback functions
+  const handleOpenLink = useCallback(() => {
+    window.open(`/${link.shortCode}`, "_blank", "noopener,noreferrer");
+  }, [link.shortCode]);
+
+  const handleShowQrCode = useCallback(() => {
+    setQrOpen(true);
+  }, []);
+
+  const handleEdit = useCallback(() => {
+    setEditOpen(true);
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    setDeleteOpen(true);
+  }, []);
 
   return (
     <>
@@ -175,46 +179,31 @@ export const LinkCard = ({ link }: LinkCardProps) => {
             </div>
 
             {/* 3-dot menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.open(`/${link.shortCode}`, "_blank", "noopener,noreferrer");
-                  }}
-                  className="cursor-pointer"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  <span>Open link</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setQrOpen(true)} className="cursor-pointer">
-                  <QrCode className="h-4 w-4" />
-                  <span>QR Code</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
-                  <Settings2 className="h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setDeleteOpen(true)}
-                  className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                  <span className="text-red-600">Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <LinkCardMenu
+              onOpenLink={handleOpenLink}
+              onShowQrCode={handleShowQrCode}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           </div>
         </CardContent>
       </Card>
     </>
   );
 };
+
+// Memoize LinkCard to prevent unnecessary re-renders
+export const LinkCard = memo(LinkCardComponent, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.link.id === nextProps.link.id &&
+    prevProps.link.shortCode === nextProps.link.shortCode &&
+    prevProps.link.longUrl === nextProps.link.longUrl &&
+    prevProps.link.clickCount === nextProps.link.clickCount &&
+    prevProps.link.createdAt === nextProps.link.createdAt &&
+    prevProps.link.title === nextProps.link.title &&
+    prevProps.link.description === nextProps.link.description &&
+    prevProps.link.imageUrl === nextProps.link.imageUrl &&
+    JSON.stringify(prevProps.link.tags) === JSON.stringify(nextProps.link.tags)
+  );
+});
