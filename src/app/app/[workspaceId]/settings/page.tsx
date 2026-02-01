@@ -40,7 +40,8 @@ const SettingsPage = async ({ params }: { params: Promise<{ workspaceId: string 
     redirect("/app");
   }
 
-  const templates = await getUtmTemplates(workspaceId);
+  const templatesResult = await getUtmTemplates(workspaceId, 1, 100);
+  const templates = Array.isArray(templatesResult) ? templatesResult : templatesResult.templates;
   const isOwner = member.role === "owner";
 
   return (

@@ -93,7 +93,7 @@ const BillingPage = () => {
         >
           <CardHeader className="">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between ">
-              <div className="flex items-center ">
+              <div className="flex items-center gap-2">
                 <CardTitle className="text-base">Current Plan</CardTitle>
                 <PlanBadge plan={currentPlan} />
               </div>

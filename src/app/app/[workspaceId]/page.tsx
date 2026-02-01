@@ -9,7 +9,7 @@ import Link from "next/link";
 
 const DashboardContent = async ({ workspaceId }: { workspaceId: string }) => {
   let links: Awaited<ReturnType<typeof getLinks>>["links"] = [];
-  let templates: Awaited<ReturnType<typeof getUtmTemplates>> = [];
+  let templates: Awaited<ReturnType<typeof getUtmTemplates>>["templates"] = [];
 
   try {
     const linksResult = await getLinks(workspaceId, 1, 5); // Get only first 5 links for dashboard
@@ -20,10 +20,12 @@ const DashboardContent = async ({ workspaceId }: { workspaceId: string }) => {
   }
 
   try {
-    templates = await getUtmTemplates(workspaceId);
+    const templatesResult = await getUtmTemplates(workspaceId, 1, 100);
+    templates = templatesResult.templates;
   } catch (error) {
     console.error("Error fetching templates:", error);
     // Continue with empty templates array
+    templates = [];
   }
 
   return (

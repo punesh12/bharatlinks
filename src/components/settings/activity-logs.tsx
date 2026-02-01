@@ -6,6 +6,8 @@ import { formatDateTime } from "@/lib/utils/date";
 import { Loader2, Link2, UserPlus, UserMinus, Shield, Trash2, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getActivityLogs } from "@/lib/actions/team";
+import { Pagination } from "@/components/shared/pagination";
+import { useSearchParams } from "next/navigation";
 
 interface ActivityLog {
   id: string;
@@ -61,24 +63,40 @@ const getActionLabel = (action: string, metadata: Record<string, unknown> | null
 };
 
 export const ActivityLogs = ({ workspaceId }: ActivityLogsProps) => {
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get("page")) || 1;
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadLogs = async () => {
       try {
         setLoading(true);
-        const data = await getActivityLogs(workspaceId, 50);
-        setLogs(data as ActivityLog[]);
+        const data = await getActivityLogs(workspaceId, currentPage, 20);
+        if (data && "logs" in data) {
+          setLogs(data.logs as ActivityLog[]);
+          setTotalPages(data.totalPages);
+          setTotalCount(data.totalCount);
+        } else {
+          // Fallback for old API format
+          setLogs((data as ActivityLog[]) || []);
+          setTotalPages(1);
+          setTotalCount((data as ActivityLog[])?.length || 0);
+        }
       } catch (error) {
         console.error("Failed to load activity logs:", error);
+        setLogs([]);
+        setTotalPages(0);
+        setTotalCount(0);
       } finally {
         setLoading(false);
       }
     };
 
     loadLogs();
-  }, [workspaceId]);
+  }, [workspaceId, currentPage]);
 
   if (loading) {
     return (
@@ -110,7 +128,10 @@ export const ActivityLogs = ({ workspaceId }: ActivityLogsProps) => {
     <Card>
       <CardHeader>
         <CardTitle>Activity Logs</CardTitle>
-        <CardDescription>Track all team activity in this workspace</CardDescription>
+        <CardDescription>
+          Track all team activity in this workspace
+          {totalCount > 0 && ` (${totalCount} total)`}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -118,6 +139,13 @@ export const ActivityLogs = ({ workspaceId }: ActivityLogsProps) => {
             <ActivityLogItem key={log.id} log={log} />
           ))}
         </div>
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            useUrlParams={true}
+          />
+        )}
       </CardContent>
     </Card>
   );

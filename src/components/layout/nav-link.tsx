@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link as LinkIcon, Settings, BarChart } from "lucide-react";
+import { LayoutDashboard, Link as LinkIcon, Settings, BarChart, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
@@ -10,6 +10,7 @@ const iconMap = {
   links: LinkIcon,
   analytics: BarChart,
   settings: Settings,
+  templates: FileText,
 };
 
 interface NavLinkProps {

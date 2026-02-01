@@ -10,6 +10,7 @@ export interface PlanLimits {
   workspaces: number | null; // null = unlimited
   customDomains: number | null; // null = unlimited
   teamMembers: number | null; // null = unlimited
+  utmTemplates: number | null; // null = unlimited
   advancedAnalytics: boolean;
   deepLinking: boolean;
   whatsappCustomization: boolean;
@@ -42,6 +43,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       workspaces: 1,
       customDomains: 0,
       teamMembers: 1,
+      utmTemplates: 5,
       advancedAnalytics: false,
       deepLinking: false,
       whatsappCustomization: false,
@@ -56,7 +58,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       "1 workspace",
       "Basic analytics (click count only)",
       "QR codes",
-      "UTM templates",
+      "5 UTM templates",
       "Tags & search",
     ],
   },
@@ -71,6 +73,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       workspaces: 3,
       customDomains: 1,
       teamMembers: 5,
+      utmTemplates: 20,
       advancedAnalytics: false,
       deepLinking: false,
       whatsappCustomization: false,
@@ -88,7 +91,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       "QR code customization",
       "Last 30 days analytics",
       "No ads",
-      "UTM templates",
+      "20 UTM templates",
       "Tags & search",
     ],
   },
@@ -103,6 +106,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       workspaces: null, // unlimited
       customDomains: 5,
       teamMembers: 20,
+      utmTemplates: null, // unlimited
       advancedAnalytics: true,
       deepLinking: true,
       whatsappCustomization: true,
@@ -136,6 +140,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       workspaces: null, // unlimited
       customDomains: null, // unlimited
       teamMembers: null, // unlimited
+      utmTemplates: null, // unlimited
       advancedAnalytics: true,
       deepLinking: true,
       whatsappCustomization: true,
